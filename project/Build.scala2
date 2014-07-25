@@ -1,0 +1,127 @@
+import sbt._
+import Keys._
+import play.Project._
+ 
+object ApplicationBuild extends Build {
+	val appName         = "raisercostin-utils"
+	val appVersion      = "1.0-SNAPSHOT"
+	val appDependencies = Seq(
+		// Add your project dependencies here,
+		jdbc
+		//,
+		//anorm
+		//  )
+		//libraryDependencies ++= Seq(
+		// Select Play modules
+		//jdbc,      // The JDBC connection pool and the play.api.db API
+		//anorm,     // Scala RDBMS Library
+		//javaJdbc,  // Java database API
+		//javaEbean, // Java Ebean plugin
+		//javaJpa,   // Java JPA plugin
+		//filters,   // A set of built-in filters
+		//,javaCore  // The core Java API
+		// WebJars pull in client-side web libraries
+		,"com.typesafe.play"   %% "play"                % "2.2.1" withSources
+		,"org.webjars" %% "webjars-play" % "2.2.0"
+		//,"org.webjars" % "bootstrap" % "2.3.1"
+		,"org.webjars" % "bootstrap" % "3.1.1"
+		// Add your own project dependencies in the form:
+		// "group" % "artifact" % "version"
+		//downloader
+		,"org.scalaj" %% "scalaj-http" % "0.3.14"
+		,"net.sf.jtidy" % "jtidy" % "r938"
+		,"com.github.scala-incubator.io" %% "scala-io-core" % "0.4.2"
+		,"com.github.scala-incubator.io" %% "scala-io-file" % "0.4.2"
+		,"org.jdom" % "jdom2" % "2.0.5"
+		,"jaxen" % "jaxen" % "1.1.6" 
+		,"org.fluentlenium" % "fluentlenium-core" % "0.9.2" 
+		,"ws.securesocial" %% "securesocial" % "2.1.3"
+		//,"ws.securesocial" %% "securesocial" % "master-SNAPSHOT"
+		,"org.squeryl" %% "squeryl" % "0.9.6-RC2"
+		,"com.netflix.rxjava" % "rxjava-scala" % "0.15.0"
+		,"org.scalatest" %% "scalatest" % "2.0" //% "test"
+		,"junit" % "junit" % "4.10" % "test"
+		,"org.json4s" % "json4s-native_2.10" % "3.2.5"
+		,"net.databinder.dispatch" % "dispatch-core_2.10" % "0.11.0"
+		//,"org.slf4j" % "slf4j-api" % "1.7.5"
+		//,"org.slf4j" % "slf4j-simple" % "1.7.5"
+		,"com.squareup.retrofit" % "retrofit" % "1.0.0"
+		,"org.scala-lang" % "scala-swing" % "2.10.3"
+		,"org.scala-lang" % "scala-reflect" % "2.10.3"
+		,"org.scala-lang.modules" %% "scala-async" % "0.9.0-M2"
+		//,"com.typesafe.akka" %% "akka-actor" % "2.2.3"
+		//,"com.typesafe.akka" %% "akka-testkit" % "2.2.3" 
+		
+		//slick for play
+		,"com.typesafe.play" %% "play-slick" % "0.6.0.1" 
+/*
+		//slick
+		,"com.typesafe.slick" %% "slick" % "2.0.1-RC1"
+		//,"org.slf4j" % "slf4j-nop" % "1.6.4"
+		,"com.h2database" % "h2" % "1.3.170"
+		,"org.xerial" % "sqlite-jdbc" % "3.7.2"		
+		//slick with play
+		//,"org.webjars" %% "webjars-play" % "2.2.1"
+		//,"org.webjars" % "bootstrap" % "2.3.2"
+		,"com.typesafe.slick" %% "slick" % "2.0.1-RC1"
+		,"com.typesafe.play" %% "play-slick" % "0.5.0.8"
+		,"org.virtuslab" %% "unicorn" % "0.4"
+*/
+		//slick joda time
+		//,"com.typesafe.slick" %% "slick" % "2.0.0"
+		,"joda-time" % "joda-time" % "2.3"
+		,"org.joda" % "joda-convert" % "1.5"
+		,"com.github.tototoshi" %% "slick-joda-mapper" % "1.0.1"
+		
+		//selenium
+		,"org.seleniumhq.selenium" % "selenium-java" % "2.35.0"
+		
+		//pdfbox
+		,"org.apache.pdfbox" % "pdfbox-app" % "1.8.4"
+		
+		//poi
+		,"org.apache.poi" % "poi" % "3.9"
+		,"org.apache.poi" % "poi-ooxml" % "3.9"
+		,"org.apache.poi" % "poi-ooxml-schemas" % "3.9"
+		,"org.apache.poi" % "poi-scratchpad" % "3.9"
+		//org/apache/poi/ooxml-schemas/1.0/ooxml-schemas-1.0.jar
+		
+		//
+		,"net.sf.jopt-simple" % "jopt-simple" % "2.4.1" intransitive() //exclude("org.apache.ant" % "ant")
+	)
+	
+	//val moduleUsers = play.Project(appName+"-users", appVersion, path = file("modules/users"))
+	
+	val main = play.Project(appName, appVersion, appDependencies)
+		.settings(play.Project.playScalaSettings:_*)
+		.settings(
+			// Add your own project settings here
+			resolvers ++= Seq(
+			    Resolver.url("maven central",url("http://central.maven.org/maven2"))
+				,Resolver.url("Objectify Play Repository (release)", url("http://schaloner.github.com/releases/"))(Resolver.ivyStylePatterns)
+				,Resolver.url("Objectify Play Repository (snapshot)", url("http://schaloner.github.com/snapshots/"))(Resolver.ivyStylePatterns)
+				,Resolver.url("play-easymail (release)", url("http://joscha.github.com/play-easymail/repo/releases/"))(Resolver.ivyStylePatterns)
+				,Resolver.url("play-easymail (snapshot)", url("http://joscha.github.com/play-easymail/repo/snapshots/"))(Resolver.ivyStylePatterns)
+				,Resolver.url("play-authenticate (release)", url("http://joscha.github.com/play-authenticate/repo/releases/"))(Resolver.ivyStylePatterns)
+				,Resolver.url("play-authenticate (snapshot)", url("http://joscha.github.com/play-authenticate/repo/snapshots/"))(Resolver.ivyStylePatterns)
+				,Resolver.sonatypeRepo("releases")
+				,Resolver.sonatypeRepo("snapshots")
+			)
+			,commands ++= Seq(/*releaseList,releaseCommand,*/shCommand)
+		)
+		//.dependsOn(moduleUsers)
+		//.aggregate(moduleUsers)  
+	//scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation","-feature")
+	
+	def shCommand = Command.args("sh", "<tag>") { (state, args) =>
+		val all = args.mkString(" ") !
+		
+		state
+	}
+}
+
+
+  
+//  libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _) 
+  
+//  scalacOptions += "-deprecation" 
