@@ -24,10 +24,10 @@ object Renamer {
     //val to = """d:\proposed"""
 
     //2
-    val from = """.\test\special5"""
+    val from = """.\test\special6"""
     val to = """d:\proposed2"""
 
-      //d:\personal\photos\
+    //d:\personal\photos\
     //val from = """.\test\special3"""
     //val from = """d:\personal\photos\2014-XX-XX\"""
     //val from = """d:\personal\work\raisercostin-utils\test\other\00006.MTS"""
@@ -46,9 +46,9 @@ object Renamer {
           //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
           //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
           val metadata = RichExif.computeMetadata(file)
-          //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
+          println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
           //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-          val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
+          val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---exifFileNumber$exifFileNumber---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
           val ANSI_BACK = "" //"\u001B[1F";
           println(ANSI_BACK + "rename  " + file + " to " +
             newName + "\t\tdetectedFormat:" + metadata.get(tagCompDetectedFormat).flatMap(_.apply("")).getOrElse(""))
@@ -161,6 +161,7 @@ object Renamer {
 
       val exifPrefix = "exif"
       //exif metadata
+      extractExifUsingBuzzMedia(file)
       val exif: MetadataMap = extractExif2(exifPrefix, file).orElse(
         if (Locations.file(file).extension.equalsIgnoreCase("avi"))
           //maybe exif@thm ?
@@ -187,6 +188,13 @@ object Renamer {
         tagCompDetectedFormat -> formatted(format)_)
       val result = fs ++ all
       TreeMap(result.toSeq: _*)
+    }
+
+    def extractExifUsingBuzzMedia(file: File) = {
+      import com.thebuzzmedia.exiftool.ExifTool
+      val tool = new ExifTool()
+      val valueMap = tool.getImageMeta(file)
+      println(valueMap)
     }
 
     def remainingFormat(file: File) = {

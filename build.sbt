@@ -2,7 +2,7 @@ import bintray.Keys._
 
 organization := "org.raisercostin"
 
-name := "raisercostin-utils"
+name := "ownit"
 
 version := "0.1"
 
@@ -19,6 +19,8 @@ libraryDependencies ++= Seq(
 	,"commons-io" % "commons-io" % "2.4"
 	,"org.apache.sanselan" % "sanselan" % "0.97-incubator"
 	,"com.thenewmotion" % "time_2.10" % "2.4"
+	//,"com.thebuzzmedia" % "exiftool-lib" % "1.1"
+	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.1"
 )
 
 sbtPlugin := true
@@ -37,6 +39,8 @@ bintrayOrganization in bintray := None
 
 resolvers ++= Seq(
 	"thenewmotion" at "http://nexus.thenewmotion.com/content/repositories/releases-public"
+	//,"The Buzz Media Maven Repository" at "http://maven.thebuzzmedia.com"
+	,"raisercostin" at "https://raisercostin.googlecode.com/svn/maven2"
 )
 
 //EclipseKeys.withSource := true

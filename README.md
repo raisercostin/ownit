@@ -15,3 +15,6 @@ $<tag1>|<tag2>|...|<tagN>(<microformat>)
 	    - compDetectedFormat - tag that attempts to reconstruct a format out of current name and the other tags
 		- compRemaining - tag with the file name data remaining after all the recognized data from detectedFormat was extracted
 - microformat - %yyyy, %MM, %dd, %HH, %mm, %ss - for date time fields
+
+= Resources =
+- http://www.thebuzzmedia.com/software/exiftool-enhanced-java-integration-for-exiftool/
