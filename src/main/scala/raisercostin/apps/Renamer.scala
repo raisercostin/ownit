@@ -24,8 +24,12 @@ object Renamer {
     //val to = """d:\proposed"""
 
     //2
-    val from = """.\test\special6"""
-    val to = """d:\proposed2"""
+    //    val from = """.\test\special6"""
+    //    val to = """d:\proposed2"""
+
+    //3
+    val from = """D:\personal\work\ownit\.\test\special6\1980-01-01--00-00-10---MVI_1723.THM"""
+    val to = """d:\proposed3"""
 
     //d:\personal\photos\
     //val from = """.\test\special3"""
@@ -161,7 +165,7 @@ object Renamer {
 
       val exifPrefix = "exif"
       //exif metadata
-      extractExifUsingBuzzMedia(file)
+      val exif2 = extractExifUsingBuzzMedia(exifPrefix, file)
       val exif: MetadataMap = extractExif2(exifPrefix, file).orElse(
         if (Locations.file(file).extension.equalsIgnoreCase("avi"))
           //maybe exif@thm ?
@@ -179,7 +183,7 @@ object Renamer {
       val fileAttributes: MetadataMap = Map(
         tagFileModificationDateTime -> formatted(new DateTime(atts.lastModifiedTime.toString).toString(exifDateTimeFormatter))_,
         tagFileCreated -> formatted(new DateTime(atts.creationTime.toString).toString(exifDateTimeFormatter))_)
-      val all = exif ++ fileAttributes
+      val all = exif ++ exif2 ++ fileAttributes
       //file system data
       val location = Locations.file(file)
       val format = extractFormat(file, all)
@@ -190,11 +194,14 @@ object Renamer {
       TreeMap(result.toSeq: _*)
     }
 
-    def extractExifUsingBuzzMedia(file: File) = {
-      import com.thebuzzmedia.exiftool.ExifTool
-      val tool = new ExifTool()
-      val valueMap = tool.getImageMeta(file)
-      println(valueMap)
+    def extractExifUsingBuzzMedia(prefix: String, file: File) = {
+      import com.thebuzzmedia.exiftool._
+      val tool = ExifToolService.Factory.create()
+      import scala.collection.JavaConversions._
+
+      val valueMap = tool.getImageMeta(file).map(x => prefix + x._1.getKey() -> formatted(x._2)_)
+      println(valueMap mkString "\n")
+      valueMap
     }
 
     def remainingFormat(file: File) = {
@@ -214,7 +221,10 @@ object Renamer {
     type TransformValue = (Any) => String
     def formatted(value: Any)(format: String): MetadataResult = {
       if (format.isEmpty)
-        Some(value.toString)
+        if (value == null)
+          None
+        else
+          Some(value.toString)
       else {
         //assume is date
         extractDate(value.toString).map { date =>

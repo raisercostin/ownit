@@ -20,7 +20,7 @@ libraryDependencies ++= Seq(
 	,"org.apache.sanselan" % "sanselan" % "0.97-incubator"
 	,"com.thenewmotion" % "time_2.10" % "2.4"
 	//,"com.thebuzzmedia" % "exiftool-lib" % "1.1"
-	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.1"
+	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.2"
 )
 
 sbtPlugin := true
