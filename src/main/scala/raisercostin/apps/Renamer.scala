@@ -11,7 +11,7 @@ import org.joda.time.DateTimeZone
 import org.apache.commons.io.filefilter.RegexFileFilter
 
 object Renamer {
-  def main(args: Array[String]) {
+  def main(args: Array[String]) = try {
     import RichExif._
     //main2(if(args.isEmpty) """d:\personal\photos\_desene\""" else args(0))
     //main2(""".\photo04.jpg""")
@@ -19,14 +19,19 @@ object Renamer {
     //    main2(""".\20140617_191316_Bulevardul Mircea Vodă.jpg""")
     //println(RichExif.formatIrfanView(""".\20140617_191316_Bulevardul Mircea Vodă.jpg""", "$E36867(%Y-%m-%d--%H-%M-%S)--$F"))
     import util.io.Locations
-    //1
-    val from = """d:\personal\photos\2013-XX-XX\"""
+    //0
+    val from = """d:\personal\photos\2014-XX-XX\"""
     val to = """d:\proposed"""
     val filter = None
 
+    //1
+//    val from = """d:\personal\photos\2013-XX-XX\"""
+//    val to = """d:\proposed"""
+//    val filter = None
+
     //2
-    //val from = """.\test\special6"""
-    //val to = """d:\proposed2"""
+//    val from = """.\test\special7"""
+//    val to = """d:\proposed2"""
 
     //3
     //val from = """D:\personal\work\ownit\.\test\special6\1980-01-01--00-00-10---MVI_1723.AVI"""
@@ -76,7 +81,10 @@ object Renamer {
     }.filter(_.isFailure).map {
       case Failure(f) => dump(f)
     }.mkString("\n"))
+  } finally {
+    RichExif.close
   }
+
   def fileWildcard(filter: String, file: String): Boolean = {
     val regex = "^" + filter.replace("?", ".?").replace("*", ".*?") + "$"
     file.matches(regex)
@@ -89,7 +97,7 @@ object Renamer {
       a
     }
   }
-  object RichExif extends AutoCloseable{
+  object RichExif extends AutoCloseable {
     import com.thebuzzmedia.exiftool._
     lazy val tool = ExifToolService.Factory.create(Feature.STAY_OPEN)
     def close = {
@@ -120,28 +128,39 @@ object Renamer {
     def interpolate(text: String, vars: MetadataMap) = {
       import scala.util.matching.Regex
       var result = """\$\{([^}]+)\}""".r.replaceAllIn(text, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(name) => expand(name, vars.get(name), "")
+        case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
       })
       result = """\$((?:\w|\|)+)\(([^)]+)\)""".r("name", "expression").replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(name, exp) => expandMultiple(name, vars, exp)
+        case Regex.Groups(name, exp) => expandMultiple(name, vars, exp).getOrElse(exp)
       })
       result = """\$(\w+)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(name) => expand(name, vars.get(name), "")
+        case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
       })
       result
     }
 
-    def expandMultiple(name: String, vars: MetadataMap, format: String): String = {
-      name.split("\\|").find { vars.contains(_) }.map(x => expand(x, vars.get(x), format)).headOption.getOrElse(format)
+    def expandMultiple(name: String, vars: MetadataMap, format: String): Try[String] = {
+      val all = name.split("\\|")
+      //println(s"""search in ${all mkString "\n"}""")
+      name.split("\\|"). //filter{x=> vars.contains(x)}.
+        map(x => expand(x, vars.get(x), format)).find(_.isSuccess).headOption.getOrElse(Failure(new RuntimeException("Couldn't find format")))
     }
 
-    def expand(name: String, data: Option[MetadataProvider], format: String): String = {
-      if (data.isEmpty)
-        format
-      else
-        data.get.apply(format).getOrElse(format)
+    def expand(name: String, data: Option[MetadataProvider], format: String): Try[String] = {
+      if (data.isEmpty) {
+        //println("Couldn't find " + name + " found +" + data)
+        Failure(new RuntimeException("Couldn't find " + name + " found +" + data))
+      } else {
+        val a = data.get.apply(format)
+        //println(s"For $name found $a")
+        //a.getOrElse(format)
+        a
+      }
     }
-    def extractExifWithExifTool(prefix: String, file: File) =
+    def extractExifWithExifTool(prefix: String, file: File): Try[MetadataMap] = 
+      Try{extractExifUsingBuzzMedia(prefix,file)}
+      
+    def extractExifWithExifToolOld(prefix: String, file: File): Try[MetadataMap] =
       Try {
 
           def split(text: String): Pair[String, String] = {
@@ -177,7 +196,7 @@ object Renamer {
       }
 
     def computeMetadata(file: File): MetadataMap = {
-        def extractExif2(prefix: String, file: File) = {
+        def extractExif2(prefix: String, file: File): Try[MetadataMap] = {
           val exifTry = Try { extractExifAsMap(file).map(x => (prefix + x._1, x._2)) }
           if (exifTry.isFailure) {
             extractExifWithExifTool(prefix, file)
@@ -253,8 +272,9 @@ object Renamer {
           Success(value.toString)
       else {
         //assume is date
-        extractDate(value.toString).map { date =>
+        extractDate(value).map { date =>
           val format2 = fromIrfanViewToJodaDateTime(format)
+          //println(format2)
           date.toString(format2.replaceAll("%", ""))
         }
         //date
@@ -271,12 +291,21 @@ object Renamer {
       result = result.replaceAllLiterally("%S", "ss")
       result
     }
-    def extractDate(text: String): Try[org.joda.time.DateTime] = {
+    def extractDate(value: Any): Try[org.joda.time.DateTime] = {
       import org.joda.time.DateTime
       import org.joda.time.format.DateTimeFormat
-      Try { DateTime.parse(text.trim, exifDateTimeFormatter) }.
-        orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter2) }).
-        orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter3) })
+      import java.util.GregorianCalendar
+      import java.util.Date
+      value match {
+        case text: String =>
+          Try { DateTime.parse(text.trim, exifDateTimeFormatter) }.
+            orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter2) }).
+            orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter3) })
+        case date: Date =>
+          Try { new DateTime(date) }
+        case date: GregorianCalendar =>
+          Try { new DateTime(date) }
+      }
     }
 
     import com.thenewmotion.time.Imports._
@@ -359,7 +388,7 @@ object Renamer {
         val stream = Stream(
           Pair("exifDateTimeOriginal", date1), Pair("exifDateTimeOriginal+1s", date1.map(_.plusSeconds(1))), Pair("exifDateTimeOriginal+2s", date1.map(_.plusSeconds(2))), Pair("exifDateTimeOriginal+3s", date1.map(_.plusSeconds(3))), Pair("exifModifyDate", date3), Pair("exifModifyDate+1s", date3.map(_.plusSeconds(1))), Pair("exifModifyDate+2s", date3.map(_.plusSeconds(2))), Pair("exifModifyDate+3s", date3.map(_.plusSeconds(3))), Pair("exifE36867", date4), Pair("exifE36867+1s", date4.map(_.plusSeconds(1))), Pair("exifE36867+2s", date4.map(_.plusSeconds(2))), Pair("exifE36867+3s", date4.map(_.plusSeconds(3))), Pair("tagFileModificationDateTime", date2), Pair("tagFileModificationDateTime+1s", date2.map(_.plusSeconds(1))), Pair("tagFileModificationDateTime+2s", date2.map(_.plusSeconds(2))), Pair("tagFileModificationDateTime+3s", date2.map(_.plusSeconds(3))))
         val a = stream.find(x => check(x._2, x._1))
-        println("a=" + a)
+        //println("a=" + a)
         if (a.isEmpty) {
           println(s"Couldn't find a pattern in [$baseName]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
           result = baseName
