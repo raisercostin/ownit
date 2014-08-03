@@ -25,12 +25,14 @@ import scala.util.Failure
 import Constants._
 import java.util.regex.Pattern
 import java.nio.file.Files
+import java.nio.file.attribute.BasicFileAttributes
 
 private object Constants {
   val FILE_SEPARATOR = File.separator
 }
 
 trait BaseLocation {
+  def raw:String
   def extension: String = FilenameUtils.getExtension(absolute)
   def name: String = FilenameUtils.getName(absolute)
   def baseName: String = FilenameUtils.getBaseName(absolute)
@@ -54,7 +56,15 @@ trait BaseLocation {
     parent.mkdirIfNecessary
     this
   }
-  def traverse = new FileVisitor.TraversePath(toPath)
+  def pathInRaw:String = {
+    val a= raw.replaceAll("""^([^*]*)[*].*$""","$1");
+  println(a);
+  
+  a}
+  def traverse:Traversable[(Path, BasicFileAttributes)] = if(raw contains "*")
+    Locations.file(pathInRaw).parent.traverse
+  else 
+    new FileVisitor.TraversePath(toPath)
   def traverseWithDir = new FileVisitor.TraversePath(toPath, true)
   protected def using[A <: { def close(): Unit }, B](resource: A)(f: A => B): B =
     try f(resource) finally resource.close()
@@ -120,6 +130,7 @@ trait OutputLocation extends BaseLocation {
 }
 
 case class FileLocation(val fileFullPath: String) extends InputLocation with OutputLocation {
+  def raw = fileFullPath
   lazy val toFile: File = new File(fileFullPath)
   def toPath: Path = Paths.get(fileFullPath)
   override def toInputStream: InputStream = new FileInputStream(toFile)
@@ -127,6 +138,7 @@ case class FileLocation(val fileFullPath: String) extends InputLocation with Out
   def parent: FileLocation = new FileLocation(parentName)
 }
 case class MemoryLocation(val memoryName: String) extends InputLocation with OutputLocation {
+  def raw = memoryName
   //val buffer: Array[Byte] = Array()
   lazy val outStream = new ByteArrayOutputStream()
   def toFile: File = ???
@@ -137,6 +149,7 @@ case class MemoryLocation(val memoryName: String) extends InputLocation with Out
   def parent: FileLocation = ???
 }
 case class ClassPathInputLocation(val resourcePath: String) extends InputLocation {
+  def raw = resourcePath
   def toFile: File = new File(getClass.getResource(resourcePath).getFile)
   def toPath: Path = toFile.toPath
   override def toInputStream: InputStream = getClass.getResourceAsStream(resourcePath)
