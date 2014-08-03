@@ -1,5 +1,4 @@
 package raisercostin.apps
-
 import scala.util.Try
 import java.io.File
 import util.io.Locations
@@ -24,11 +23,11 @@ object Renamer {
     //val to = """d:\proposed"""
 
     //2
-    //    val from = """.\test\special6"""
-    //    val to = """d:\proposed2"""
+    //val from = """.\test\special6"""
+    //val to = """d:\proposed2"""
 
     //3
-    val from = """D:\personal\work\ownit\.\test\special6\1980-01-01--00-00-10---MVI_1723.THM"""
+    val from = """D:\personal\work\ownit\.\test\special6\1980-01-01--00-00-10---MVI_1723.AVI"""
     val to = """d:\proposed3"""
 
     //d:\personal\photos\
@@ -50,7 +49,7 @@ object Renamer {
           //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
           //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
           val metadata = RichExif.computeMetadata(file)
-          println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
+          //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
           //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
           val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---exifFileNumber$exifFileNumber---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
           val ANSI_BACK = "" //"\u001B[1F";
@@ -163,15 +162,21 @@ object Renamer {
         }
       }
 
-      val exifPrefix = "exif"
       //exif metadata
-      val exif2 = extractExifUsingBuzzMedia(exifPrefix, file)
-      val exif: MetadataMap = extractExif2(exifPrefix, file).orElse(
-        if (Locations.file(file).extension.equalsIgnoreCase("avi"))
-          //maybe exif@thm ?
-          extractExif2(exifPrefix, Locations.file(file).withExtension(_ => "THM").toFile)
+      val exifPrefix = "exif"
+      val thmExifPrefix = "exif"
+      val exifPrefix2 = "exif"
+      val thmExifPrefix2 = "exif"
+      println(Locations.file(file).extension)
+      println(Locations.file(file).extension.equalsIgnoreCase("avi"))
+      val exifFomFile:MetadataMap = extractExif2(exifPrefix, file).getOrElse(Map())
+      val exifFomFileWithExifTool:MetadataMap = extractExifUsingBuzzMedia(exifPrefix2, file)
+      val pairThm = if(Locations.file(file).extension.equalsIgnoreCase("avi"))
+        Some(Locations.file(file).withExtension(_ => "THM").toFile)
         else
-          Failure(new RuntimeException())).getOrElse(Map())
+          None
+      val exifFromAssociatedThm:MetadataMap = pairThm.flatMap(file => extractExif2(thmExifPrefix, file).toOption).getOrElse(Map())
+      val exifFromAssociatedThmUsingExifTool:MetadataMap =  pairThm.map(file => extractExifUsingBuzzMedia(thmExifPrefix2, file)).getOrElse(Map())
       //exif for avi in pair thm file?
       //exif metadata
 
@@ -183,7 +188,8 @@ object Renamer {
       val fileAttributes: MetadataMap = Map(
         tagFileModificationDateTime -> formatted(new DateTime(atts.lastModifiedTime.toString).toString(exifDateTimeFormatter))_,
         tagFileCreated -> formatted(new DateTime(atts.creationTime.toString).toString(exifDateTimeFormatter))_)
-      val all = exif ++ exif2 ++ fileAttributes
+      val all = exifFomFile ++ exifFomFileWithExifTool ++ exifFromAssociatedThm ++ exifFromAssociatedThmUsingExifTool++fileAttributes
+      println(toSimpleMap(all) mkString "\n")
       //file system data
       val location = Locations.file(file)
       val format = extractFormat(file, all)
@@ -194,14 +200,14 @@ object Renamer {
       TreeMap(result.toSeq: _*)
     }
 
-    def extractExifUsingBuzzMedia(prefix: String, file: File) = {
+    def extractExifUsingBuzzMedia(prefix: String, file: File):MetadataMap = {
       import com.thebuzzmedia.exiftool._
       val tool = ExifToolService.Factory.create()
       import scala.collection.JavaConversions._
 
       val valueMap = tool.getImageMeta(file).map(x => prefix + x._1.getKey() -> formatted(x._2)_)
-      println(valueMap mkString "\n")
-      valueMap
+      //println(valueMap mkString "\n")
+      Map() ++ valueMap
     }
 
     def remainingFormat(file: File) = {
@@ -295,7 +301,7 @@ object Renamer {
       date
     }
     def toSimpleMap(metadata: MetadataMap): Map[String, String] =
-      metadata.mapValues(_("").getOrElse(null)).filter(x => x._2 != null)
+      metadata.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
     def extractFormat(file: File, metadata: MetadataMap): String = {
       val baseName = Locations.file(file).baseName
       var result = baseName
@@ -316,11 +322,12 @@ object Renamer {
           false
         }
       }
+      //$exifE36867|exifModifyDate|exifDateTimeOriginal
       //implicit val metadata = extractExif(file)
       //val date = extractAsDate(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
       //println(computeMetadata(metadata).mkString("\n"))
       //val date1 = metadata.get("E36867").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
-      val date1 = metadata.get("exifDateTimeOriginal").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
+      val date1:Option[DateTime] = metadata.get("exifDateTimeOriginal").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
       if (baseName.length >= "yyyyMMddHHmmss".length) {
         //val stream = Stream(
         //  Pair("exifDateTimeOriginal", metadata.get("exifDateTimeOriginal").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }))
@@ -329,12 +336,12 @@ object Renamer {
           if (!check(date1.map(_.plusSeconds(1)), "exifDateTimeOriginal+1s")) {
             if (!check(date1.map(_.plusSeconds(2)), "exifDateTimeOriginal+2s")) {
               if (!check(date1.map(_.plusSeconds(3)), "exifDateTimeOriginal+3s")) {
-                val date3 = metadata.get("exifModifyDate").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
+                val date3:Option[DateTime] = metadata.get("exifModifyDate").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
                 if (!check(date3, "exifModifyDate")) {
                   if (!check(date3.map(_.plusSeconds(1)), "exifModifyDate+1s")) {
                     //val oldResult = result
                     //result = baseName
-                    val date2 = metadata.get(tagFileModificationDateTime).flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
+                    val date2:Option[DateTime] = metadata.get(tagFileModificationDateTime).flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
                     if (!check(date2, tagFileModificationDateTime)) {
                       println(s"Couldn't find a pattern in [$baseName]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
                       result = baseName
