@@ -11,7 +11,24 @@ import org.joda.time.DateTimeZone
 import org.apache.commons.io.filefilter.RegexFileFilter
 
 object Renamer {
-  def main(args: Array[String]) = try {
+  def main(args: Array[String]) = {
+    if (args.length != 2) {
+      println(s"""You must give two parameters and you gave ${args.toList.mkString("\n")}. The folder (that will NEVER be changed) with your media(pics,movies) files and the folder where you want to get a proposal of new names based on EXIF information.""")
+    } else {
+      ownPics(args(0), args(1))
+    }
+  }
+
+  def test = {
+    //ownPics("""d:\personal\photos\201X-XX-XX\""","""d:\proposed1""")
+    //ownPics("""d:\personal\photos\2013-XX-XX\""","""d:\proposed2""")
+    //ownPics(""".\test\special11""","""d:\proposed11""")
+    //ownPics("""D:\personal\work\ownit\.\test\special6\1980-01-01--00-00-10---MVI_1723.AVI""","""d:\proposed3""")
+    //ownPics("""D:\personal\photos\2013-XX-XX\108_0731""","""d:\proposed4""",Some("*IMG*0043*"))
+    ownPics("""z:\master\test""", """z:\master\test-proposed""")
+  }
+
+  def ownPics(from: String, to: String, filter: Option[String] = None) = try {
     import RichExif._
     //main2(if(args.isEmpty) """d:\personal\photos\_desene\""" else args(0))
     //main2(""".\photo04.jpg""")
@@ -19,28 +36,6 @@ object Renamer {
     //    main2(""".\20140617_191316_Bulevardul Mircea Vodă.jpg""")
     //println(RichExif.formatIrfanView(""".\20140617_191316_Bulevardul Mircea Vodă.jpg""", "$E36867(%Y-%m-%d--%H-%M-%S)--$F"))
     import util.io.Locations
-    //0
-    val from = """d:\personal\photos\2014-XX-XX\"""
-    val to = """d:\proposed"""
-    val filter = None
-
-    //1
-//    val from = """d:\personal\photos\2013-XX-XX\"""
-//    val to = """d:\proposed"""
-//    val filter = None
-
-    //2
-//    val from = """.\test\special7"""
-//    val to = """d:\proposed2"""
-
-    //3
-    //val from = """D:\personal\work\ownit\.\test\special6\1980-01-01--00-00-10---MVI_1723.AVI"""
-    //val to = """d:\proposed3"""
-
-    //4
-    //val from = """D:\personal\photos\2013-XX-XX\108_0731"""
-    //val filter = Some("*IMG*0043*")
-    //val to = """d:\proposed4"""
 
     //d:\personal\photos\
     //val from = """.\test\special3"""
@@ -61,21 +56,27 @@ object Renamer {
         val file = file1.toFile
         println("analyze " + file.getAbsolutePath + " ...")
         val src = Locations.file(file)
-        val newName = Try {
-          //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
-          //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
-          val metadata = RichExif.computeMetadata(file)
-          //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
-          //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-          val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---exifFileNumber$exifFileNumber---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-          val ANSI_BACK = "" //"\u001B[1F";
-          println(ANSI_BACK + "rename  " + file + " to " +
-            newName + "\t\tdetectedFormat:" + metadata.get(tagCompDetectedFormat).map(_.apply("")).getOrElse(""))
-          newName
-        }
-        val goodChange = newName.isSuccess && !newName.get.contains("%H-%M-%S")
-        val dest = Locations.file(if (goodChange) placeGoodFiles else placeBadFiles)
-        val baseName = if (goodChange) newName.get else src.name
+        val newName =
+          //          if (src.name == ".picasa.ini")
+          //            Try(src.name)
+          //          else
+          Try {
+            //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
+            //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
+            val metadata = RichExif.computeMetadata(file)
+            //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
+            //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
+            val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
+            val ANSI_BACK = "" //"\u001B[1F";
+            println(ANSI_BACK + "rename  " + file + " to " +
+              newName + "\t\tdetectedFormat:" + metadata.get(tagCompDetectedFormat).map(_.apply("")).getOrElse(""))
+            newName
+          }
+        val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
+        val badChange = newName.isSuccess && newName.get.contains("%H-%M-%S") && extensionsWithExif.contains(src.extension.toLowerCase)
+        val nameChanged = newName.isSuccess && !newName.get.contains("%H-%M-%S")
+        val dest = Locations.file(if (badChange) placeBadFiles else placeGoodFiles)
+        val baseName = if (nameChanged) newName.get else src.name
         dest.child(src.relativeTo(placeLocation)).withName(_ => baseName).mkdirOnParentIfNecessary.copyFromAsHardLink(src)
         newName
     }.filter(_.isFailure).map {
@@ -99,7 +100,7 @@ object Renamer {
   }
   object RichExif extends AutoCloseable {
     import com.thebuzzmedia.exiftool._
-    lazy val tool = ExifToolService.Factory.create(Feature.STAY_OPEN)
+    lazy val tool = ExifToolService.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
     def close = {
       tool.shutdown()
     }
@@ -157,9 +158,9 @@ object Renamer {
         a
       }
     }
-    def extractExifWithExifTool(prefix: String, file: File): Try[MetadataMap] = 
-      Try{extractExifUsingBuzzMedia(prefix,file)}
-      
+    def extractExifWithExifTool(prefix: String, file: File): Try[MetadataMap] =
+      Try { extractExifUsingBuzzMedia(prefix, file) }
+
     def extractExifWithExifToolOld(prefix: String, file: File): Try[MetadataMap] =
       Try {
 

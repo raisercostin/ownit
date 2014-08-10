@@ -1,4 +1,5 @@
 import bintray.Keys._
+import com.github.retronym.SbtOneJar._
 
 organization := "org.raisercostin"
 
@@ -20,7 +21,7 @@ libraryDependencies ++= Seq(
 	,"org.apache.sanselan" % "sanselan" % "0.97-incubator"
 	,"com.thenewmotion" % "time_2.10" % "2.4"
 	//,"com.thebuzzmedia" % "exiftool-lib" % "1.1"
-	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.2"
+	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.4"
 )
 
 sbtPlugin := true
@@ -44,3 +45,7 @@ resolvers ++= Seq(
 )
 
 //EclipseKeys.withSource := true
+
+oneJarSettings
+
+mainClass := Some("raisercostin.apps.Renamer")
