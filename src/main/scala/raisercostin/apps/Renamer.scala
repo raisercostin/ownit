@@ -32,7 +32,7 @@ object Renamer {
   }
   def dumpInfo(file: String) = {
     import org.raisercostin.exif.RichExif._
-    println(toSimpleMap(extractExifAsMap(Locations.file(file).toFile)).mkString("\n"))
+    println(extractExifAsMap(Locations.file(file).toFile).toSimpleMap.mkString("\n"))
   }
 
   import org.raisercostin.exif.RichExif
@@ -75,10 +75,10 @@ object Renamer {
             val metadata = RichExif.computeMetadata(file)
             //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-            val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
+            val newName = metadata.format("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
             val ANSI_BACK = "" //"\u001B[1F";
             println(ANSI_BACK + "rename  " + file + " to " +
-              newName + "\t\tdetectedFormat:" + metadata.get(RichExif.tagCompDetectedFormat).map(_.apply("")).getOrElse(""))
+              newName + "\t\tdetectedFormat:" + metadata.vars.get(RichExif.tagCompDetectedFormat).map(_.apply("")).getOrElse(""))
 
             val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
             val badChange = newName.contains("%H-%M-%S") && extensionsWithExif.contains(src.extension.toLowerCase)

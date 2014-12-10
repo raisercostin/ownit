@@ -28,7 +28,6 @@ import scala.util.Success
 import scala.util.Try
 import scala.util.matching.Regex
 import org.raisercostin.util.io.Locations
-
 object RichExif extends AutoCloseable {
   import com.thebuzzmedia.exiftool._
   import java.util.regex.Pattern
@@ -38,14 +37,99 @@ object RichExif extends AutoCloseable {
   import scala.util.Success
   import scala.collection.immutable.TreeMap
   lazy val tool = ExifToolService.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
-  def close = {
+  override def close = {
     tool.shutdown()
   }
 
   type MetadataResult = Try[String]
   type MetadataProvider = (String) => MetadataResult
-  type MetadataMap = Map[String, MetadataProvider]
-  def formatted(value: Any)(format: String): MetadataResult =
+  type MetadataMapType = Map[String, MetadataProvider]
+  case class MetadataMap(vars: MetadataMapType) {
+    def toSimpleMap: Map[String, String] =
+      vars.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
+
+    def format(pattern: String) = interpolate(pattern)
+    //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
+    private def interpolate(text: String) = {
+      import scala.util.matching.Regex
+      var result = """\$\{([^}]+)\}""".r.replaceAllIn(text, (_: scala.util.matching.Regex.Match) match {
+        case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
+      })
+      result = """\$((?:\w|\|)+)\(([^)]+)\)""".r("name", "expression").replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
+        case Regex.Groups(name, exp) => expandMultiple(name, exp).getOrElse(exp)
+      })
+      result = """\$(\w+)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
+        case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
+      })
+      result
+    }
+    private def expandMultiple(name: String, format: String): Try[String] = {
+      val all = name.split("\\|")
+      //println(s"""search in ${all mkString "\n"}""")
+      name.split("\\|"). //filter{x=> vars.contains(x)}.
+        map(x => expand(x, vars.get(x), format)).find(_.isSuccess).headOption.getOrElse(Failure(new RuntimeException("Couldn't find format")))
+    }
+
+    private def expand(name: String, data: Option[MetadataProvider], format: String): Try[String] = {
+      if (data.isEmpty) {
+        //println("Couldn't find " + name + " found +" + data)
+        Failure(new RuntimeException("Couldn't find " + name + " found +" + data))
+      } else {
+        val a = data.get.apply(format)
+        //println(s"For $name found $a")
+        //a.getOrElse(format)
+        a
+      }
+    }
+    def extractFormat(file: File): String = {
+      val baseName = Locations.file(file).baseName
+      var result = baseName
+      var message = List[String]()
+
+        def check(date1: Try[DateTime], prefix: String): Boolean = {
+          if (date1.isSuccess) {
+            result = extractDateFromString(baseName, date1.get, prefix)
+            val mappings = countSubstring(result, prefix)
+            if (6 != mappings) {
+              //actual good prefix is this
+              message ::= s"$prefix = $date1 matched [$result] but have only [$mappings]. 6 are needed."
+              false
+            } else {
+              true
+            }
+          } else {
+            message ::= s"$prefix doesn't exist: " + date1.failed.get.getMessage
+            false
+          }
+        }
+
+        def extractDateTime(id: String) = vars.get(id).fold[Try[String]] { Failure(new RuntimeException("Not found")) } { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
+
+      //$exifE36867|exifModifyDate|exifDateTimeOriginal
+      //implicit val metadata = extractExif(file)
+      //val date = extractAsDate(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
+      //println(computeMetadata(metadata).mkString("\n"))
+      //val date1 = metadata.get("E36867").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
+      if (baseName.length >= "yyyyMMddHHmmss".length) {
+        lazy val date1: Try[DateTime] = extractDateTime("exifDateTimeOriginal")
+        lazy val date3: Try[DateTime] = extractDateTime("exifModifyDate")
+        lazy val date2: Try[DateTime] = extractDateTime(tagFileModificationDateTime)
+        lazy val date4: Try[DateTime] = extractDateTime("exifE36867")
+        val stream = Stream(
+          Pair("exifDateTimeOriginal", date1), Pair("exifDateTimeOriginal+1s", date1.map(_.plusSeconds(1))), Pair("exifDateTimeOriginal+2s", date1.map(_.plusSeconds(2))), Pair("exifDateTimeOriginal+3s", date1.map(_.plusSeconds(3))), Pair("exifModifyDate", date3), Pair("exifModifyDate+1s", date3.map(_.plusSeconds(1))), Pair("exifModifyDate+2s", date3.map(_.plusSeconds(2))), Pair("exifModifyDate+3s", date3.map(_.plusSeconds(3))), Pair("exifE36867", date4), Pair("exifE36867+1s", date4.map(_.plusSeconds(1))), Pair("exifE36867+2s", date4.map(_.plusSeconds(2))), Pair("exifE36867+3s", date4.map(_.plusSeconds(3))), Pair("tagFileModificationDateTime", date2), Pair("tagFileModificationDateTime+1s", date2.map(_.plusSeconds(1))), Pair("tagFileModificationDateTime+2s", date2.map(_.plusSeconds(2))), Pair("tagFileModificationDateTime+3s", date2.map(_.plusSeconds(3))))
+        val a = stream.find(x => check(x._2, x._1))
+        //println("a=" + a)
+        if (a.isEmpty) {
+          println(s"Couldn't find a pattern in [$baseName]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
+          result = baseName
+        }
+      } else {
+        println(s"Couldn't find a date pattern in [$baseName] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
+      }
+      result
+    }
+  }
+  private def formatted(value: Any)(format: String): MetadataResult =
     //formatted2(value)(format).toOption
     formatted2(value)(format)
 
@@ -59,46 +143,11 @@ object RichExif extends AutoCloseable {
   private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ")
   private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
-  def format(metadata: MetadataMap, pattern: String): String = {
-    interpolate(pattern, metadata)
-  }
-  //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
-  def interpolate(text: String, vars: MetadataMap) = {
-    import scala.util.matching.Regex
-    var result = """\$\{([^}]+)\}""".r.replaceAllIn(text, (_: scala.util.matching.Regex.Match) match {
-      case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
-    })
-    result = """\$((?:\w|\|)+)\(([^)]+)\)""".r("name", "expression").replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-      case Regex.Groups(name, exp) => expandMultiple(name, vars, exp).getOrElse(exp)
-    })
-    result = """\$(\w+)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-      case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
-    })
-    result
-  }
 
-  def expandMultiple(name: String, vars: MetadataMap, format: String): Try[String] = {
-    val all = name.split("\\|")
-    //println(s"""search in ${all mkString "\n"}""")
-    name.split("\\|"). //filter{x=> vars.contains(x)}.
-      map(x => expand(x, vars.get(x), format)).find(_.isSuccess).headOption.getOrElse(Failure(new RuntimeException("Couldn't find format")))
-  }
-
-  def expand(name: String, data: Option[MetadataProvider], format: String): Try[String] = {
-    if (data.isEmpty) {
-      //println("Couldn't find " + name + " found +" + data)
-      Failure(new RuntimeException("Couldn't find " + name + " found +" + data))
-    } else {
-      val a = data.get.apply(format)
-      //println(s"For $name found $a")
-      //a.getOrElse(format)
-      a
-    }
-  }
-  def extractExifWithExifTool(prefix: String, file: File): Try[MetadataMap] =
+  private def extractExifWithExifTool(prefix: String, file: File): Try[MetadataMapType] =
     Try { extractExifUsingBuzzMedia(prefix, file) }
 
-  def extractExifWithExifToolOld(prefix: String, file: File): Try[MetadataMap] =
+  private def extractExifWithExifToolOld(prefix: String, file: File): Try[MetadataMap] =
     Try {
 
         def split(text: String): Pair[String, String] = {
@@ -127,15 +176,15 @@ object RichExif extends AutoCloseable {
           //println(x)
           (prefix + x._1, formatted(x._2)_)
         }
-        result
+        MetadataMap(result)
       } else {
         throw new RuntimeException(s"Coulnd't get exif info from " + file + ". Got $blockTillExits from exiftool.")
       }
     }
 
   def computeMetadata(file: File): MetadataMap = {
-      def extractExif2(prefix: String, file: File): Try[MetadataMap] = {
-        val exifTry = Try { extractExifAsMap(file).map(x => (prefix + x._1, x._2)) }
+      def extractExif2(prefix: String, file: File): Try[MetadataMapType] = {
+        val exifTry = Try { extractExifAsMap(file).vars.map(x => (prefix + x._1, x._2)) }
         if (exifTry.isFailure) {
           extractExifWithExifTool(prefix, file)
         } else {
@@ -148,14 +197,14 @@ object RichExif extends AutoCloseable {
     val thmExifPrefix = "exif"
     val exifPrefix2 = "exif"
     val thmExifPrefix2 = "exif"
-    val exifFomFile: MetadataMap = extractExif2(exifPrefix, file).getOrElse(Map())
-    val exifFomFileWithExifTool: MetadataMap = extractExifUsingBuzzMedia(exifPrefix2, file)
+    val exifFomFile = extractExif2(exifPrefix, file).getOrElse(Map())
+    val exifFomFileWithExifTool: MetadataMapType = extractExifUsingBuzzMedia(exifPrefix2, file)
     val pairThm = if (Locations.file(file).extension.equalsIgnoreCase("avi"))
       Some(Locations.file(file).withExtension(_ => "THM").toFile)
     else
       None
-    val exifFromAssociatedThm: MetadataMap = pairThm.flatMap(file => extractExif2(thmExifPrefix, file).toOption).getOrElse(Map())
-    val exifFromAssociatedThmUsingExifTool: MetadataMap = pairThm.map(file => extractExifUsingBuzzMedia(thmExifPrefix2, file)).getOrElse(Map())
+    val exifFromAssociatedThm = pairThm.flatMap(file => extractExif2(thmExifPrefix, file).toOption).getOrElse(Map())
+    val exifFromAssociatedThmUsingExifTool = pairThm.map(file => extractExifUsingBuzzMedia(thmExifPrefix2, file)).getOrElse(Map())
     //exif for avi in pair thm file?
     //exif metadata
 
@@ -164,21 +213,21 @@ object RichExif extends AutoCloseable {
     import java.nio.file.attribute._
     val atts = Files.readAttributes(file.toPath, classOf[BasicFileAttributes], LinkOption.NOFOLLOW_LINKS)
     import org.joda.time.DateTime
-    val fileAttributes: MetadataMap = Map(
+    val fileAttributes = Map(
       tagFileModificationDateTime -> formatted(new DateTime(atts.lastModifiedTime.toString).toString(exifDateTimeFormatter))_,
       tagFileCreated -> formatted(new DateTime(atts.creationTime.toString).toString(exifDateTimeFormatter))_)
     val all = exifFomFile ++ exifFomFileWithExifTool ++ exifFromAssociatedThm ++ exifFromAssociatedThmUsingExifTool ++ fileAttributes
     //println(toSimpleMap(all) mkString "\n")
     //file system data
     val location = Locations.file(file)
-    val format = extractFormat(file, all)
-    val fs: MetadataMap = Map(tagFileExtension -> formatted(location.extension)_,
+    val format = MetadataMap(all).extractFormat(file)
+    val fs = Map(tagFileExtension -> formatted(location.extension)_,
       tagCompRemaining -> formatted(cleanFormat(format))_,
       tagCompDetectedFormat -> formatted(format)_)
     val result = fs ++ all
-    TreeMap(result.toSeq: _*)
+    MetadataMap(TreeMap(result.toSeq: _*))
   }
-  def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMap = {
+  private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
     import scala.collection.JavaConversions._
 
     val valueMap = tool.getImageMeta(file).map(x => prefix + x._1.getKey() -> formatted(x._2)_)
@@ -186,14 +235,14 @@ object RichExif extends AutoCloseable {
     Map() ++ valueMap
   }
 
-  def remainingFormat(file: File) = {
-    var format = extractFormat(file, RichExif.computeMetadata(file))
-  }
-  def remainingFormat(file: File, metadata: MetadataMap) = {
-    var format = extractFormat(file, metadata)
-    cleanFormat(format)
-  }
-  def cleanFormat(format: String) = {
+//  private def remainingFormat(file: File) = {
+//    var format = extractFormat(file, RichExif.computeMetadata(file))
+//  }
+//  private def remainingFormat(file: File, metadata: MetadataMap) = {
+//    var format = extractFormat(file, metadata)
+//    cleanFormat(format)
+//  }
+  private def cleanFormat(format: String) = {
     //this assumes that usually after $ variable a separator might come
     var result = format.replaceAll("""\$\{[^}]+\}[._-]?""", "")
     result = result.replaceAll("^[._-]+", "")
@@ -202,7 +251,7 @@ object RichExif extends AutoCloseable {
   }
   type TransformValue = (Any) => String
 
-  def formatted2(value: Any)(format: String): Try[String] = {
+  private def formatted2(value: Any)(format: String): Try[String] = {
     if (format.isEmpty)
       if (value == null)
         Success("")
@@ -218,7 +267,7 @@ object RichExif extends AutoCloseable {
       //date
     }
   }
-  def fromIrfanViewToJodaDateTime(format: String) = {
+  private def fromIrfanViewToJodaDateTime(format: String) = {
     //%Y-%m-%d--%H-%M-%S
     var result = format
     result = result.replaceAllLiterally("%Y", "yyyy")
@@ -229,7 +278,7 @@ object RichExif extends AutoCloseable {
     result = result.replaceAllLiterally("%S", "ss")
     result
   }
-  def extractDate(value: Any): Try[org.joda.time.DateTime] = {
+  private def extractDate(value: Any): Try[org.joda.time.DateTime] = {
     import org.joda.time.DateTime
     import org.joda.time.format.DateTimeFormat
     import java.util.GregorianCalendar
@@ -252,10 +301,10 @@ object RichExif extends AutoCloseable {
   import org.apache.sanselan.formats.tiff.{ TiffField, TiffImageMetadata }
   import org.apache.sanselan.formats.tiff.constants.{ ExifTagConstants, GPSTagConstants, TagInfo, TiffConstants, TiffTagConstants }
 
-  def formatIrfanView(fileName: String, pattern: String): String = {
+  private def formatIrfanView(fileName: String, pattern: String): String = {
     formatIrfanView(new File(fileName), pattern)
   }
-  def formatIrfanView(fileName: File, pattern: String): String = {
+  private def formatIrfanView(fileName: File, pattern: String): String = {
     implicit val metadata = extractExif(fileName)
     val date = extractAsDate(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
     var result = pattern
@@ -271,7 +320,7 @@ object RichExif extends AutoCloseable {
     result = result.replaceAll("""(\$E36867\()([^)]+)\)""", "$2")
     result
   }
-  def extractExif(fileName: File) = {
+  private def extractExif(fileName: File) = {
     val file = Locations.file(fileName)
     import org.apache.sanselan.Sanselan
     val metadata = try {
@@ -281,62 +330,13 @@ object RichExif extends AutoCloseable {
     }
     metadata
   }
-  def extractAsDate(tag: TagInfo)(implicit metadata: org.apache.sanselan.common.IImageMetadata) = {
+  private def extractAsDate(tag: TagInfo)(implicit metadata: org.apache.sanselan.common.IImageMetadata) = {
     val data = metadata.asInstanceOf[JpegImageMetadata].findEXIFValue(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
     val date = DateTime.parse(data.getValue.toString.trim, DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss"))
     date
   }
-  def toSimpleMap(metadata: MetadataMap): Map[String, String] =
-    metadata.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
-  def extractFormat(file: File, metadata: MetadataMap): String = {
-    val baseName = Locations.file(file).baseName
-    var result = baseName
-    var message = List[String]()
-
-      def check(date1: Try[DateTime], prefix: String): Boolean = {
-        if (date1.isSuccess) {
-          result = extractDateFromString(baseName, date1.get, prefix)
-          val mappings = countSubstring(result, prefix)
-          if (6 != mappings) {
-            //actual good prefix is this
-            message ::= s"$prefix = $date1 matched [$result] but have only [$mappings]. 6 are needed."
-            false
-          } else {
-            true
-          }
-        } else {
-          message ::= s"$prefix doesn't exist: " + date1.failed.get.getMessage
-          false
-        }
-      }
-
-      def extractDateTime(id: String) = metadata.get(id).fold[Try[String]] { Failure(new RuntimeException("Not found")) } { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
-
-    //$exifE36867|exifModifyDate|exifDateTimeOriginal
-    //implicit val metadata = extractExif(file)
-    //val date = extractAsDate(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
-    //println(computeMetadata(metadata).mkString("\n"))
-    //val date1 = metadata.get("E36867").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
-    if (baseName.length >= "yyyyMMddHHmmss".length) {
-      lazy val date1: Try[DateTime] = extractDateTime("exifDateTimeOriginal")
-      lazy val date3: Try[DateTime] = extractDateTime("exifModifyDate")
-      lazy val date2: Try[DateTime] = extractDateTime(tagFileModificationDateTime)
-      lazy val date4: Try[DateTime] = extractDateTime("exifE36867")
-      val stream = Stream(
-        Pair("exifDateTimeOriginal", date1), Pair("exifDateTimeOriginal+1s", date1.map(_.plusSeconds(1))), Pair("exifDateTimeOriginal+2s", date1.map(_.plusSeconds(2))), Pair("exifDateTimeOriginal+3s", date1.map(_.plusSeconds(3))), Pair("exifModifyDate", date3), Pair("exifModifyDate+1s", date3.map(_.plusSeconds(1))), Pair("exifModifyDate+2s", date3.map(_.plusSeconds(2))), Pair("exifModifyDate+3s", date3.map(_.plusSeconds(3))), Pair("exifE36867", date4), Pair("exifE36867+1s", date4.map(_.plusSeconds(1))), Pair("exifE36867+2s", date4.map(_.plusSeconds(2))), Pair("exifE36867+3s", date4.map(_.plusSeconds(3))), Pair("tagFileModificationDateTime", date2), Pair("tagFileModificationDateTime+1s", date2.map(_.plusSeconds(1))), Pair("tagFileModificationDateTime+2s", date2.map(_.plusSeconds(2))), Pair("tagFileModificationDateTime+3s", date2.map(_.plusSeconds(3))))
-      val a = stream.find(x => check(x._2, x._1))
-      //println("a=" + a)
-      if (a.isEmpty) {
-        println(s"Couldn't find a pattern in [$baseName]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
-        result = baseName
-      }
-    } else {
-      println(s"Couldn't find a date pattern in [$baseName] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
-    }
-    result
-  }
-  def countSubstring(str: String, substr: String) = Pattern.quote(substr).r.findAllMatchIn(str).length
-  def extractDateFromString(text: String, date: DateTime, prefix2: String, suffix: String = "+"): String = {
+  private def countSubstring(str: String, substr: String) = Pattern.quote(substr).r.findAllMatchIn(str).length
+  private def extractDateFromString(text: String, date: DateTime, prefix2: String, suffix: String = "+"): String = {
     var result = text
     val prefix = "$$$$"
     result = replaceFirstLiterally(result, date.toString("yyyy"), "${" + prefix + suffix + "yyyy}")
@@ -348,12 +348,12 @@ object RichExif extends AutoCloseable {
     result = replaceAllLiterally(result, "${" + prefix, "${" + prefix2)
     result
   }
-  def replaceFirstLiterally(text: String, literal: String, replacement: String): String = {
+  private def replaceFirstLiterally(text: String, literal: String, replacement: String): String = {
     val arg1 = java.util.regex.Pattern.quote(literal)
     val arg2 = java.util.regex.Matcher.quoteReplacement(replacement)
     text.replaceFirst(arg1, arg2)
   }
-  def replaceAllLiterally(text: String, literal: String, replacement: String): String = {
+  private def replaceAllLiterally(text: String, literal: String, replacement: String): String = {
     val arg1 = java.util.regex.Pattern.quote(literal)
     val arg2 = java.util.regex.Matcher.quoteReplacement(replacement)
     text.replaceAll(arg1, arg2)
@@ -362,9 +362,9 @@ object RichExif extends AutoCloseable {
     val metadata = extractExif(file)
     extractExifAsMap(metadata)
   }
-  def extractExifAsMap(metadata: org.apache.sanselan.common.IImageMetadata, extractKeyword: Boolean = true): MetadataMap = {
+  private def extractExifAsMap(metadata: org.apache.sanselan.common.IImageMetadata, extractKeyword: Boolean = true): MetadataMap = {
     import scala.collection.JavaConversions._
-    var map: MetadataMap = Map()
+    var map = Map[String, MetadataProvider]()
     metadata.getItems().foreach {
       case item: TiffImageMetadata.Item =>
         if (extractKeyword) {
@@ -376,6 +376,6 @@ object RichExif extends AutoCloseable {
           map += ("E" + hex) -> value
         }
     }
-    map
+    MetadataMap(map)
   }
 }
