@@ -1,4 +1,4 @@
-package util.io
+package org.raisercostin.util.io
 
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
@@ -17,14 +17,14 @@ trait FileVisitor {
     // Make foreach receive a function from Tuple2 to Unit
     override def foreach[U](f: ((Path, BasicFileAttributes)) => U) {
       class Visitor extends SimpleFileVisitor[Path] {
-        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = try {
           // Pass a tuple to f
           f(file -> attrs)
           FileVisitResult.CONTINUE
           //} catch {
           //case _: Throwable => FileVisitResult.TERMINATE
         }
-        override def preVisitDirectory(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+        override def preVisitDirectory(file: Path, attrs: BasicFileAttributes): FileVisitResult = try {
           if (withDir) {
             f(file -> attrs)
           }

@@ -10,8 +10,8 @@ version := "0.1"
 scalaVersion := "2.10.2"
 
 libraryDependencies ++= Seq(
-	"net.sf.jopt-simple" % "jopt-simple" % "2.4.1" intransitive() //exclude("org.apache.ant" % "ant")
-	,"dom4j" % "dom4j" % "1.6.1"
+	//"net.sf.jopt-simple" % "jopt-simple" % "2.4.1" intransitive() //exclude("org.apache.ant" % "ant"),
+	"dom4j" % "dom4j" % "1.6.1"
 	,"jaxen" % "jaxen" % "1.1.6"
 	,"org.scalatest" %% "scalatest" % "2.0" //% "test"
 	,"junit" % "junit" % "4.10" //% "test"
@@ -49,3 +49,10 @@ resolvers ++= Seq(
 oneJarSettings
 
 mainClass := Some("raisercostin.apps.Renamer")
+
+unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil
+
+unmanagedSourceDirectories in Test := (scalaSource in Test).value :: Nil
+
+//generate eclipse project with resources folders in classpath as well
+EclipseKeys.createSrc := EclipseCreateSrc.Default + EclipseCreateSrc.Resource
