@@ -18,3 +18,11 @@ $<tag1>|<tag2>|...|<tagN>(<microformat>)
 
 = Resources =
 - http://www.thebuzzmedia.com/software/exiftool-enhanced-java-integration-for-exiftool/
+
+= Execute = 
+- create executable
+sbt oneJar
+- propose new organized folder without modifying source folder
+ownit.bat d:\personal\photos2\ d:\personal\photos2-george
+- display exif info for a file
+ownit.bat d:\personal\photos2-george-bad\Camera\20140906_000621.jpg

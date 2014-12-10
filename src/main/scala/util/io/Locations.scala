@@ -122,7 +122,7 @@ trait OutputLocation extends BaseLocation {
       Files.createLink(toPath, src.toPath)
     } else {
       if (exist) {
-        //file already exists. don't complain
+        throw new RuntimeException("Destination file "+this+" already exists.")
       } else {
         Files.createLink(toPath, src.toPath)
       }

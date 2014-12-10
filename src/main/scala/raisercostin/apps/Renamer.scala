@@ -12,10 +12,13 @@ import org.apache.commons.io.filefilter.RegexFileFilter
 
 object Renamer {
   def main(args: Array[String]) = {
-    if (args.length != 2) {
-      println(s"""You must give two parameters and you gave ${args.toList.mkString("\n")}. The folder (that will NEVER be changed) with your media(pics,movies) files and the folder where you want to get a proposal of new names based on EXIF information.""")
-    } else {
-      ownPics(args(0), args(1))
+    args match {
+      case Array(from: String, to: String) =>
+        ownPics(from, to)
+      case Array(from: String) =>
+        dumpInfo(from)
+      case _ =>
+        println(s"""You must give two parameters and you gave ${args.toList.mkString("\n")}. \nThe folder (that will NEVER be changed) with your media(pics,movies) files and the folder where you want to get a proposal of new names based on EXIF information.""")
     }
   }
 
@@ -26,6 +29,11 @@ object Renamer {
     //ownPics("""D:\personal\work\ownit\.\test\special6\1980-01-01--00-00-10---MVI_1723.AVI""","""d:\proposed3""")
     //ownPics("""D:\personal\photos\2013-XX-XX\108_0731""","""d:\proposed4""",Some("*IMG*0043*"))
     ownPics("""z:\master\test""", """z:\master\test-proposed""")
+  }
+  def dumpInfo(file: String) = {
+    import RichExif._
+    import util.io.Locations
+    println(toSimpleMap(extractExifAsMap(Locations.file(file).toFile)).mkString("\n"))
   }
 
   def ownPics(from: String, to: String, filter: Option[String] = None) = try {
@@ -70,14 +78,27 @@ object Renamer {
             val ANSI_BACK = "" //"\u001B[1F";
             println(ANSI_BACK + "rename  " + file + " to " +
               newName + "\t\tdetectedFormat:" + metadata.get(tagCompDetectedFormat).map(_.apply("")).getOrElse(""))
+
+            val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
+            val badChange = newName.contains("%H-%M-%S") && extensionsWithExif.contains(src.extension.toLowerCase)
+            val nameChanged = !newName.contains("%H-%M-%S")
+            val dest = Locations.file(if (badChange) placeBadFiles else placeGoodFiles)
+            val baseName = if (nameChanged) newName else src.name
+            val destFile = dest.child(src.relativeTo(placeLocation)).withName(_ => baseName).mkdirOnParentIfNecessary
+            var newDestFile = destFile
+            var counter = 1
+            while(newDestFile.exist){
+              newDestFile = destFile.withBaseName(baseName=> baseName+"-"+counter)
+              counter += 1
+            }
+            newDestFile.copyFromAsHardLink(src)
             newName
           }
-        val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
-        val badChange = newName.isSuccess && newName.get.contains("%H-%M-%S") && extensionsWithExif.contains(src.extension.toLowerCase)
-        val nameChanged = newName.isSuccess && !newName.get.contains("%H-%M-%S")
-        val dest = Locations.file(if (badChange) placeBadFiles else placeGoodFiles)
-        val baseName = if (nameChanged) newName.get else src.name
-        dest.child(src.relativeTo(placeLocation)).withName(_ => baseName).mkdirOnParentIfNecessary.copyFromAsHardLink(src)
+        newName.recover {
+          case e =>
+            Locations.file(placeBadFiles).child(src.relativeTo(placeLocation)).mkdirOnParentIfNecessary.copyFromAsHardLink(src)
+            Failure(e)
+        }
         newName
     }.filter(_.isFailure).map {
       case Failure(f) => dump(f)
