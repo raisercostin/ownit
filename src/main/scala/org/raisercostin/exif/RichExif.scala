@@ -48,11 +48,10 @@ object RichExif extends AutoCloseable {
     def toSimpleMap: Map[String, String] =
       vars.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
 
-    def format(pattern: String) = interpolate(pattern)
     //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
-    private def interpolate(text: String) = {
+    def interpolate(pattern: String) = {
       import scala.util.matching.Regex
-      var result = """\$\{([^}]+)\}""".r.replaceAllIn(text, (_: scala.util.matching.Regex.Match) match {
+      var result = """\$\{([^}]+)\}""".r.replaceAllIn(pattern, (_: scala.util.matching.Regex.Match) match {
         case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
       })
       result = """\$((?:\w|\|)+)\(([^)]+)\)""".r("name", "expression").replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {

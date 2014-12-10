@@ -75,7 +75,7 @@ object Renamer {
             val metadata = RichExif.computeMetadata(file)
             //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-            val newName = metadata.format("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
+            val newName = metadata.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
             val ANSI_BACK = "" //"\u001B[1F";
             println(ANSI_BACK + "rename  " + file + " to " +
               newName + "\t\tdetectedFormat:" + metadata.vars.get(RichExif.tagCompDetectedFormat).map(_.apply("")).getOrElse(""))
