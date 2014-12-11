@@ -9,6 +9,7 @@ import scala.collection.immutable.TreeMap
 import org.joda.time.DateTimeZone
 import org.apache.commons.io.filefilter.RegexFileFilter
 import org.raisercostin.util.io.Locations
+import org.raisercostin.exif.ExifTags
 
 object Renamer {
   def main(args: Array[String]) = {
@@ -72,13 +73,13 @@ object Renamer {
           Try {
             //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
             //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
-            val metadata = RichExif.extractExifTags(file)
+            val tags = RichExif.extractExifTags(file)
             //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-            val newName = metadata.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
+            val newName = tags.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
             val ANSI_BACK = "" //"\u001B[1F";
             println(ANSI_BACK + "rename  " + file + " to " +
-              newName + "\t\tdetectedFormat:" + metadata.vars.get(RichExif.tagCompDetectedFormat).map(_.apply("")).getOrElse(""))
+              newName + "\t\tdetectedFormat:" + ExifTags(tags).detectedFormat.getOrElse(""))
 
             val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
             val badChange = newName.contains("%H-%M-%S") && extensionsWithExif.contains(src.extension.toLowerCase)

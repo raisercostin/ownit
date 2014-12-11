@@ -28,6 +28,9 @@ import scala.util.Success
 import scala.util.Try
 import scala.util.matching.Regex
 import org.raisercostin.util.io.Locations
+case class ExifTags(tags:RichExif.Tags){
+  def detectedFormat = tags.vars.get(RichExif.tagCompDetectedFormat).map(_.apply(""))
+}
 object RichExif extends AutoCloseable {
   import com.thebuzzmedia.exiftool._
   import java.util.regex.Pattern
@@ -47,7 +50,6 @@ object RichExif extends AutoCloseable {
   case class Tags(vars: MetadataMapType) {
     def toSimpleMap: Map[String, String] =
       vars.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
-
     //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
     def interpolate(pattern: String) = {
       import scala.util.matching.Regex
@@ -81,13 +83,16 @@ object RichExif extends AutoCloseable {
       }
     }
     def extractFormat(file: File): String = {
-      val baseName = Locations.file(file).baseName
-      var result = baseName
+      analyze(Locations.file(file).baseName)
+    }
+    
+    def analyze(value: String): String = {
+      var result = value
       var message = List[String]()
 
         def check(date1: Try[DateTime], prefix: String): Boolean = {
           if (date1.isSuccess) {
-            result = extractDateFromString(baseName, date1.get, prefix)
+            result = extractDateFromString(value, date1.get, prefix)
             val mappings = countSubstring(result, prefix)
             if (6 != mappings) {
               //actual good prefix is this
@@ -109,7 +114,7 @@ object RichExif extends AutoCloseable {
       //val date = extractAsDate(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
       //println(computeMetadata(metadata).mkString("\n"))
       //val date1 = metadata.get("E36867").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
-      if (baseName.length >= "yyyyMMddHHmmss".length) {
+      if (value.length >= "yyyyMMddHHmmss".length) {
           lazy val date1: Try[DateTime] = extractDateTime("exifDateTimeOriginal")
           lazy val date3: Try[DateTime] = extractDateTime("exifModifyDate")
           lazy val date2: Try[DateTime] = extractDateTime(tagFileModificationDateTime)
@@ -119,11 +124,11 @@ object RichExif extends AutoCloseable {
           val a = stream.find(x => check(x._2, x._1))
           //println("a=" + a)
           if (a.isEmpty) {
-            println(s"Couldn't find a pattern in [$baseName]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
-            result = baseName
+            println(s"Couldn't find a pattern in [$value]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
+            result = value
           }
         } else {
-        println(s"Couldn't find a date pattern in [$baseName] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
+        println(s"Couldn't find a date pattern in [$value] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
       }
       result
     }
@@ -219,10 +224,10 @@ object RichExif extends AutoCloseable {
     //println(toSimpleMap(all) mkString "\n")
     //file system data
     val location = Locations.file(file)
-    val format = Tags(all).extractFormat(file)
+    val tags = Tags(all).extractFormat(file)
     val fs = Map(tagFileExtension -> formatted(location.extension)_,
-      tagCompRemaining -> formatted(cleanFormat(format))_,
-      tagCompDetectedFormat -> formatted(format)_)
+      tagCompRemaining -> formatted(cleanFormat(tags))_,
+      tagCompDetectedFormat -> formatted(tags)_)
     val result = fs ++ all
     Tags(TreeMap(result.toSeq: _*))
   }
