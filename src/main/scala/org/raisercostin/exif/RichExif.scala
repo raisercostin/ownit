@@ -44,7 +44,7 @@ object RichExif extends AutoCloseable {
   type MetadataResult = Try[String]
   type MetadataProvider = (String) => MetadataResult
   type MetadataMapType = Map[String, MetadataProvider]
-  case class MetadataMap(vars: MetadataMapType) {
+  case class Tags(vars: MetadataMapType) {
     def toSimpleMap: Map[String, String] =
       vars.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
 
@@ -102,7 +102,7 @@ object RichExif extends AutoCloseable {
           }
         }
 
-        def extractDateTime(id: String) = vars.get(id).fold[Try[String]] { Failure(new RuntimeException("Not found")) } { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
+        def extractDateTime(id: String) = vars.get(id).fold[Try[String]] { Failure(new RuntimeException("Not found")) } { (_.apply(dateFormat)) }.map { (x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat))) }
 
       //$exifE36867|exifModifyDate|exifDateTimeOriginal
       //implicit val metadata = extractExif(file)
@@ -110,19 +110,19 @@ object RichExif extends AutoCloseable {
       //println(computeMetadata(metadata).mkString("\n"))
       //val date1 = metadata.get("E36867").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
       if (baseName.length >= "yyyyMMddHHmmss".length) {
-        lazy val date1: Try[DateTime] = extractDateTime("exifDateTimeOriginal")
-        lazy val date3: Try[DateTime] = extractDateTime("exifModifyDate")
-        lazy val date2: Try[DateTime] = extractDateTime(tagFileModificationDateTime)
-        lazy val date4: Try[DateTime] = extractDateTime("exifE36867")
-        val stream = Stream(
-          Pair("exifDateTimeOriginal", date1), Pair("exifDateTimeOriginal+1s", date1.map(_.plusSeconds(1))), Pair("exifDateTimeOriginal+2s", date1.map(_.plusSeconds(2))), Pair("exifDateTimeOriginal+3s", date1.map(_.plusSeconds(3))), Pair("exifModifyDate", date3), Pair("exifModifyDate+1s", date3.map(_.plusSeconds(1))), Pair("exifModifyDate+2s", date3.map(_.plusSeconds(2))), Pair("exifModifyDate+3s", date3.map(_.plusSeconds(3))), Pair("exifE36867", date4), Pair("exifE36867+1s", date4.map(_.plusSeconds(1))), Pair("exifE36867+2s", date4.map(_.plusSeconds(2))), Pair("exifE36867+3s", date4.map(_.plusSeconds(3))), Pair("tagFileModificationDateTime", date2), Pair("tagFileModificationDateTime+1s", date2.map(_.plusSeconds(1))), Pair("tagFileModificationDateTime+2s", date2.map(_.plusSeconds(2))), Pair("tagFileModificationDateTime+3s", date2.map(_.plusSeconds(3))))
-        val a = stream.find(x => check(x._2, x._1))
-        //println("a=" + a)
-        if (a.isEmpty) {
-          println(s"Couldn't find a pattern in [$baseName]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
-          result = baseName
-        }
-      } else {
+          lazy val date1: Try[DateTime] = extractDateTime("exifDateTimeOriginal")
+          lazy val date3: Try[DateTime] = extractDateTime("exifModifyDate")
+          lazy val date2: Try[DateTime] = extractDateTime(tagFileModificationDateTime)
+          lazy val date4: Try[DateTime] = extractDateTime("exifE36867")
+          val stream = Stream(
+            Pair("exifDateTimeOriginal", date1), Pair("exifDateTimeOriginal+1s", date1.map(_.plusSeconds(1))), Pair("exifDateTimeOriginal+2s", date1.map(_.plusSeconds(2))), Pair("exifDateTimeOriginal+3s", date1.map(_.plusSeconds(3))), Pair("exifModifyDate", date3), Pair("exifModifyDate+1s", date3.map(_.plusSeconds(1))), Pair("exifModifyDate+2s", date3.map(_.plusSeconds(2))), Pair("exifModifyDate+3s", date3.map(_.plusSeconds(3))), Pair("exifE36867", date4), Pair("exifE36867+1s", date4.map(_.plusSeconds(1))), Pair("exifE36867+2s", date4.map(_.plusSeconds(2))), Pair("exifE36867+3s", date4.map(_.plusSeconds(3))), Pair("tagFileModificationDateTime", date2), Pair("tagFileModificationDateTime+1s", date2.map(_.plusSeconds(1))), Pair("tagFileModificationDateTime+2s", date2.map(_.plusSeconds(2))), Pair("tagFileModificationDateTime+3s", date2.map(_.plusSeconds(3))))
+          val a = stream.find(x => check(x._2, x._1))
+          //println("a=" + a)
+          if (a.isEmpty) {
+            println(s"Couldn't find a pattern in [$baseName]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
+            result = baseName
+          }
+        } else {
         println(s"Couldn't find a date pattern in [$baseName] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
       }
       result
@@ -146,7 +146,7 @@ object RichExif extends AutoCloseable {
   private def extractExifWithExifTool(prefix: String, file: File): Try[MetadataMapType] =
     Try { extractExifUsingBuzzMedia(prefix, file) }
 
-  private def extractExifWithExifToolOld(prefix: String, file: File): Try[MetadataMap] =
+  private def extractExifWithExifToolOld(prefix: String, file: File): Try[Tags] =
     Try {
 
         def split(text: String): Pair[String, String] = {
@@ -175,13 +175,13 @@ object RichExif extends AutoCloseable {
           //println(x)
           (prefix + x._1, formatted(x._2)_)
         }
-        MetadataMap(result)
+        Tags(result)
       } else {
         throw new RuntimeException(s"Coulnd't get exif info from " + file + ". Got $blockTillExits from exiftool.")
       }
     }
 
-  def computeMetadata(file: File): MetadataMap = {
+  def extractExifTags(file: File): Tags = {
       def extractExif2(prefix: String, file: File): Try[MetadataMapType] = {
         val exifTry = Try { extractExifAsMap(file).vars.map(x => (prefix + x._1, x._2)) }
         if (exifTry.isFailure) {
@@ -219,12 +219,12 @@ object RichExif extends AutoCloseable {
     //println(toSimpleMap(all) mkString "\n")
     //file system data
     val location = Locations.file(file)
-    val format = MetadataMap(all).extractFormat(file)
+    val format = Tags(all).extractFormat(file)
     val fs = Map(tagFileExtension -> formatted(location.extension)_,
       tagCompRemaining -> formatted(cleanFormat(format))_,
       tagCompDetectedFormat -> formatted(format)_)
     val result = fs ++ all
-    MetadataMap(TreeMap(result.toSeq: _*))
+    Tags(TreeMap(result.toSeq: _*))
   }
   private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
     import scala.collection.JavaConversions._
@@ -357,11 +357,11 @@ object RichExif extends AutoCloseable {
     val arg2 = java.util.regex.Matcher.quoteReplacement(replacement)
     text.replaceAll(arg1, arg2)
   }
-  def extractExifAsMap(file: File): MetadataMap = {
+  def extractExifAsMap(file: File): Tags = {
     val metadata = extractExif(file)
     extractExifAsMap(metadata)
   }
-  private def extractExifAsMap(metadata: org.apache.sanselan.common.IImageMetadata, extractKeyword: Boolean = true): MetadataMap = {
+  private def extractExifAsMap(metadata: org.apache.sanselan.common.IImageMetadata, extractKeyword: Boolean = true): Tags = {
     import scala.collection.JavaConversions._
     var map = Map[String, MetadataProvider]()
     metadata.getItems().foreach {
@@ -375,6 +375,6 @@ object RichExif extends AutoCloseable {
           map += ("E" + hex) -> value
         }
     }
-    MetadataMap(map)
+    Tags(map)
   }
 }
