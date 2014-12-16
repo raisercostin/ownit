@@ -28,10 +28,13 @@ import scala.util.Success
 import scala.util.Try
 import scala.util.matching.Regex
 import org.raisercostin.util.io.Locations
-case class ExifTags(tags:RichExif.Tags){
-  def detectedFormat = tags.vars.get(RichExif.tagCompDetectedFormat).map(_.apply(""))
+case class ExifTags(tags: RichExif.Tags) {
+  def fileNumberMinor = tags.getInt("exifFileNumberMinor")
+  def fileNumberMajor = tags.getInt("exifFileNumberMajor")
+  def fileNumber = tags.getInt("exifFileNumber")
 }
-object RichExif extends AutoCloseable {
+object RichExif extends RichExif
+class RichExif extends AutoCloseable {
   import com.thebuzzmedia.exiftool._
   import java.util.regex.Pattern
   import scala.util.Failure
@@ -47,20 +50,21 @@ object RichExif extends AutoCloseable {
   type MetadataResult = Try[String]
   type MetadataProvider = (String) => MetadataResult
   type MetadataMapType = Map[String, MetadataProvider]
-  case class Tags(vars: MetadataMapType) {
+  case class Tags(tags: MetadataMapType) {
+    def getInt(tag:String) = tags.get(tag).map(_("").get.toInt)
     def toSimpleMap: Map[String, String] =
-      vars.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
+      tags.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
     //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
     def interpolate(pattern: String) = {
       import scala.util.matching.Regex
       var result = """\$\{([^}]+)\}""".r.replaceAllIn(pattern, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
+        case Regex.Groups(name) => expand(name, tags.get(name), "").getOrElse("")
       })
       result = """\$((?:\w|\|)+)\(([^)]+)\)""".r("name", "expression").replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
         case Regex.Groups(name, exp) => expandMultiple(name, exp).getOrElse(exp)
       })
       result = """\$(\w+)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(name) => expand(name, vars.get(name), "").getOrElse("")
+        case Regex.Groups(name) => expand(name, tags.get(name), "").getOrElse("")
       })
       result
     }
@@ -68,7 +72,7 @@ object RichExif extends AutoCloseable {
       val all = name.split("\\|")
       //println(s"""search in ${all mkString "\n"}""")
       name.split("\\|"). //filter{x=> vars.contains(x)}.
-        map(x => expand(x, vars.get(x), format)).find(_.isSuccess).headOption.getOrElse(Failure(new RuntimeException("Couldn't find format")))
+        map(x => expand(x, tags.get(x), format)).find(_.isSuccess).headOption.getOrElse(Failure(new RuntimeException("Couldn't find format")))
     }
 
     private def expand(name: String, data: Option[MetadataProvider], format: String): Try[String] = {
@@ -85,7 +89,7 @@ object RichExif extends AutoCloseable {
     def extractFormat(file: File): String = {
       analyze(Locations.file(file).baseName)
     }
-    
+
     def analyze(value: String): String = {
       var result = value
       var message = List[String]()
@@ -107,7 +111,7 @@ object RichExif extends AutoCloseable {
           }
         }
 
-        def extractDateTime(id: String) = vars.get(id).fold[Try[String]] { Failure(new RuntimeException("Not found")) } { (_.apply(dateFormat)) }.map { (x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat))) }
+        def extractDateTime(tag: String) = tags.get(tag).fold[Try[String]] { Failure(new RuntimeException("Not found")) } { (_.apply(dateFormat)) }.map { (x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat))) }
 
       //$exifE36867|exifModifyDate|exifDateTimeOriginal
       //implicit val metadata = extractExif(file)
@@ -115,24 +119,62 @@ object RichExif extends AutoCloseable {
       //println(computeMetadata(metadata).mkString("\n"))
       //val date1 = metadata.get("E36867").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
       if (value.length >= "yyyyMMddHHmmss".length) {
-          lazy val date1: Try[DateTime] = extractDateTime("exifDateTimeOriginal")
-          lazy val date3: Try[DateTime] = extractDateTime("exifModifyDate")
-          lazy val date2: Try[DateTime] = extractDateTime(tagFileModificationDateTime)
-          lazy val date4: Try[DateTime] = extractDateTime("exifE36867")
-          val stream = Stream(
-            Pair("exifDateTimeOriginal", date1), Pair("exifDateTimeOriginal+1s", date1.map(_.plusSeconds(1))), Pair("exifDateTimeOriginal+2s", date1.map(_.plusSeconds(2))), Pair("exifDateTimeOriginal+3s", date1.map(_.plusSeconds(3))), Pair("exifModifyDate", date3), Pair("exifModifyDate+1s", date3.map(_.plusSeconds(1))), Pair("exifModifyDate+2s", date3.map(_.plusSeconds(2))), Pair("exifModifyDate+3s", date3.map(_.plusSeconds(3))), Pair("exifE36867", date4), Pair("exifE36867+1s", date4.map(_.plusSeconds(1))), Pair("exifE36867+2s", date4.map(_.plusSeconds(2))), Pair("exifE36867+3s", date4.map(_.plusSeconds(3))), Pair("tagFileModificationDateTime", date2), Pair("tagFileModificationDateTime+1s", date2.map(_.plusSeconds(1))), Pair("tagFileModificationDateTime+2s", date2.map(_.plusSeconds(2))), Pair("tagFileModificationDateTime+3s", date2.map(_.plusSeconds(3))))
-          val a = stream.find(x => check(x._2, x._1))
-          //println("a=" + a)
-          if (a.isEmpty) {
-            println(s"Couldn't find a pattern in [$value]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
-            result = value
-          }
-        } else {
-        println(s"Couldn't find a date pattern in [$value] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
+        lazy val date1: Try[DateTime] = extractDateTime("exifDateTimeOriginal")
+        lazy val date3: Try[DateTime] = extractDateTime("exifModifyDate")
+        lazy val date2: Try[DateTime] = extractDateTime(tagFileModificationDateTime)
+        lazy val date4: Try[DateTime] = extractDateTime("exifE36867")
+        val stream = Stream(
+          Pair("exifDateTimeOriginal", date1), Pair("exifDateTimeOriginal+1s", date1.map(_.plusSeconds(1))),
+          Pair("exifDateTimeOriginal+2s", date1.map(_.plusSeconds(2))), Pair("exifDateTimeOriginal+3s", date1.map(_.plusSeconds(3))),
+          Pair("exifModifyDate", date3), Pair("exifModifyDate+1s", date3.map(_.plusSeconds(1))),
+          Pair("exifModifyDate+2s", date3.map(_.plusSeconds(2))), Pair("exifModifyDate+3s", date3.map(_.plusSeconds(3))),
+          Pair("exifE36867", date4), Pair("exifE36867+1s", date4.map(_.plusSeconds(1))), Pair("exifE36867+2s", date4.map(_.plusSeconds(2))),
+          Pair("exifE36867+3s", date4.map(_.plusSeconds(3))), Pair("tagFileModificationDateTime", date2),
+          Pair("tagFileModificationDateTime+1s", date2.map(_.plusSeconds(1))),
+          Pair("tagFileModificationDateTime+2s", date2.map(_.plusSeconds(2))),
+          Pair("tagFileModificationDateTime+3s", date2.map(_.plusSeconds(3))))
+        val a = stream.find(x => check(x._2, x._1))
+        //println("a=" + a)
+        if (a.isEmpty) {
+          //println(s"Couldn't find a pattern in [$value]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
+          result = value
+        }
+      } else {
+        //println(s"Couldn't find a date pattern in [$value] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
       }
+      result = extractTagFromString(result, "exifFileNumber")
+      result = extractTagFromString(result, "exifFileNumberMajor")
+      result = extractTagFromString(result, "exifFileNumberMinor")
+      result
+    }
+    private def extractTagFromString(text: String, tag: String): String = {
+      tags.get(tag) match {
+        case Some(value) =>
+          value("") match {
+            case Success(value) =>
+              replaceFirstLiterally(text, value, "${" + tag + "}")
+            case Failure(e) =>
+              throw e
+          }
+        case _ =>
+          text
+      }
+    }
+    private def countSubstring(str: String, substr: String) = Pattern.quote(substr).r.findAllMatchIn(str).length
+    private def extractDateFromString(text: String, date: DateTime, prefix2: String, suffix: String = "+"): String = {
+      var result = text
+      val prefix = "$$$$"
+      result = replaceFirstLiterally(result, date.toString("yyyy"), "${" + prefix + suffix + "yyyy}")
+      result = replaceFirstLiterally(result, date.toString("MM"), "${" + prefix + suffix + "MM}")
+      result = replaceFirstLiterally(result, date.toString("dd"), "${" + prefix + suffix + "dd}")
+      result = replaceFirstLiterally(result, date.toString("HH"), "${" + prefix + suffix + "HH}")
+      result = replaceFirstLiterally(result, date.toString("mm"), "${" + prefix + suffix + "mm}")
+      result = replaceFirstLiterally(result, date.toString("ss"), "${" + prefix + suffix + "ss}")
+      result = replaceAllLiterally(result, "${" + prefix, "${" + prefix2)
       result
     }
   }
+
   private def formatted(value: Any)(format: String): MetadataResult =
     //formatted2(value)(format).toOption
     formatted2(value)(format)
@@ -188,7 +230,7 @@ object RichExif extends AutoCloseable {
 
   def extractExifTags(file: File): Tags = {
       def extractExif2(prefix: String, file: File): Try[MetadataMapType] = {
-        val exifTry = Try { extractExifAsMap(file).vars.map(x => (prefix + x._1, x._2)) }
+        val exifTry = Try { extractExifAsMap(file).tags.map(x => (prefix + x._1, x._2)) }
         if (exifTry.isFailure) {
           extractExifWithExifTool(prefix, file)
         } else {
@@ -228,7 +270,13 @@ object RichExif extends AutoCloseable {
     val fs = Map(tagFileExtension -> formatted(location.extension)_,
       tagCompRemaining -> formatted(cleanFormat(tags))_,
       tagCompDetectedFormat -> formatted(tags)_)
-    val result = fs ++ all
+    var result = fs ++ all
+    all.get("exifFileNumber").map { exifFileNumber =>
+      exifFileNumber("").get.toInt
+    }.map { exifFileNumber =>
+      result += "exifFileNumberMajor" -> formatted(exifFileNumber / 10000)_
+      result += "exifFileNumberMinor" -> formatted(exifFileNumber % 10000)_
+    }
     Tags(TreeMap(result.toSeq: _*))
   }
   private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
@@ -239,13 +287,13 @@ object RichExif extends AutoCloseable {
     Map() ++ valueMap
   }
 
-//  private def remainingFormat(file: File) = {
-//    var format = extractFormat(file, RichExif.computeMetadata(file))
-//  }
-//  private def remainingFormat(file: File, metadata: MetadataMap) = {
-//    var format = extractFormat(file, metadata)
-//    cleanFormat(format)
-//  }
+  //  private def remainingFormat(file: File) = {
+  //    var format = extractFormat(file, RichExif.computeMetadata(file))
+  //  }
+  //  private def remainingFormat(file: File, metadata: MetadataMap) = {
+  //    var format = extractFormat(file, metadata)
+  //    cleanFormat(format)
+  //  }
   private def cleanFormat(format: String) = {
     //this assumes that usually after $ variable a separator might come
     var result = format.replaceAll("""\$\{[^}]+\}[._-]?""", "")
@@ -338,19 +386,6 @@ object RichExif extends AutoCloseable {
     val data = metadata.asInstanceOf[JpegImageMetadata].findEXIFValue(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
     val date = DateTime.parse(data.getValue.toString.trim, DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss"))
     date
-  }
-  private def countSubstring(str: String, substr: String) = Pattern.quote(substr).r.findAllMatchIn(str).length
-  private def extractDateFromString(text: String, date: DateTime, prefix2: String, suffix: String = "+"): String = {
-    var result = text
-    val prefix = "$$$$"
-    result = replaceFirstLiterally(result, date.toString("yyyy"), "${" + prefix + suffix + "yyyy}")
-    result = replaceFirstLiterally(result, date.toString("MM"), "${" + prefix + suffix + "MM}")
-    result = replaceFirstLiterally(result, date.toString("dd"), "${" + prefix + suffix + "dd}")
-    result = replaceFirstLiterally(result, date.toString("HH"), "${" + prefix + suffix + "HH}")
-    result = replaceFirstLiterally(result, date.toString("mm"), "${" + prefix + suffix + "mm}")
-    result = replaceFirstLiterally(result, date.toString("ss"), "${" + prefix + suffix + "ss}")
-    result = replaceAllLiterally(result, "${" + prefix, "${" + prefix2)
-    result
   }
   private def replaceFirstLiterally(text: String, literal: String, replacement: String): String = {
     val arg1 = java.util.regex.Pattern.quote(literal)

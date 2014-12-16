@@ -79,7 +79,7 @@ object Renamer {
             val newName = tags.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
             val ANSI_BACK = "" //"\u001B[1F";
             println(ANSI_BACK + "rename  " + file + " to " +
-              newName + "\t\tdetectedFormat:" + ExifTags(tags).detectedFormat.getOrElse(""))
+              newName + "\t\tdetectedFormat:" + tags.analyze(src.name))
 
             val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
             val badChange = newName.contains("%H-%M-%S") && extensionsWithExif.contains(src.extension.toLowerCase)

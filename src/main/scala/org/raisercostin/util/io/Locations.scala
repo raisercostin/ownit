@@ -246,7 +246,7 @@ object ClassPathInputLocation {
     }
     cl
   }
-  private def getClassLoader(): ClassLoader =
+  private def getSpecialClassLoader(): ClassLoader =
     //Option(Thread.currentThread().getContextClassLoader).orElse
     (Option(classOf[ClassPathInputLocation].getClassLoader)).orElse(Option(classOf[ClassLoader].getClassLoader)).get
 }
@@ -254,20 +254,10 @@ case class ClassPathInputLocation(val initialResourcePath: String) extends Input
   def raw = initialResourcePath
   import ClassPathInputLocation._
   lazy val resourcePath = initialResourcePath.stripPrefix("/")
-  override def toUrl: java.net.URL = getClassLoader.getResource(resourcePath)
-  override def absolute: String = Option(toUrl).map(_.toExternalForm).getOrElse("unfound classpath://" + resourcePath)
-  def toFile: File = Try{new File(toUrl.getFile)}.recoverWith{case e:Throwable=>Failure(new RuntimeException("Couldn't get file from "+this,e))}.get
-  //def toFile: File = {
-  //  ???
-    //    val res = getClassLoader.getResource(resourcePath)
-    //    //val res2 = getClassLoader.getResourceAsStream(resourcePath)
-    //    new File(res.getFile)
-  //}
-  override def toInputStream: InputStream = {
-    val cl = getClassLoader
-    val res2 = cl.getResourceAsStream(resourcePath)
-    res2
-  }
+  override def toUrl: java.net.URL = getSpecialClassLoader.getResource(resourcePath)
+  override def absolute: String = toUrl.toURI().getPath()//Try{toFile.getAbsolutePath()}.recover{case e:Throwable => Option(toUrl).map(_.toExternalForm).getOrElse("unfound classpath://" + resourcePath) }.get
+  def toFile: File = Try{new File(toUrl.toURI())}.recoverWith{case e:Throwable=>Failure(new RuntimeException("Couldn't get file from "+this,e))}.get
+  override def toInputStream: InputStream = getSpecialClassLoader.getResourceAsStream(resourcePath)
   def child(child: String): this.type = new ClassPathInputLocation(resourcePath + FILE_SEPARATOR + child).asInstanceOf[this.type]
   def parent: this.type = new ClassPathInputLocation(parentName).asInstanceOf[this.type]
   ///def toWrite = Locations.file(toFile.getAbsolutePath)
