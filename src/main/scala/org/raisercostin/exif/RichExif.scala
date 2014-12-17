@@ -28,10 +28,63 @@ import scala.util.Success
 import scala.util.Try
 import scala.util.matching.Regex
 import org.raisercostin.util.io.Locations
-case class ExifTags(tags: RichExif.Tags) {
+case class Distance(meters: Double) {
+  def toInternational =
+    if (meters >= 1.0)
+      f"$meters%.1f km"
+    else
+      f"${meters / 1000}%.0f m"
+}
+object Gps {
+  lazy val locations = Seq(
+      Gps("44.860046", "N", "24.867838", "E", "13.0", "0", Some("pitesti")),
+      Gps("44.4378258","N","26.0946376","E","12","0",Some("bucuresti")),
+      Gps("50.8387","N","4.363405","E","12","0",Some("brusells"))
+  )
+}
+//https://www.google.com/maps/place/@44.85597,24.8735028,13z
+//https://www.google.com/maps/place/Pite%C8%99ti,+Romania/@44.85597,24.8735028,13z
+//https://www.google.com/maps/place/44%C2%B051'21.5%22N+24%C2%B052'24.6%22E/@44.85597,24.8735028,17z/data=!3m1!4b1!4m2!3m1!1s0x0:0x0
+//44.860046, 24.867838
+//44°51'21.5"N 24°52'24.6"E
+case class Gps(GPSLatitude: String, GPSLatitudeRef: String, GPSLongitude: String, GPSLongitudeRef: String, GPSAltitude: String, GPSAltitudeRef: String, name: Option[String] = None) {
+  def latitude = GPSLatitude.toDouble
+  def longitude = GPSLongitude.toDouble
+  def distanceTo(to: Gps) = distance(latitude, longitude, to.latitude, to.longitude)
+  private def distance(lat1: Double, lon1: Double, lat2: Double, lon2: Double) = {
+    var R = 6371; // km
+    var dLat = toRad(lat2 - lat1);
+    var dLon = toRad(lon2 - lon1);
+    var lat1R = toRad(lat1);
+    var lat2R = toRad(lat2);
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1R) * Math.cos(lat2R);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var d = R * c;
+    Distance(d * 1000)
+  }
+
+  private def toRad(value: Double): Double = value * Math.PI / 180
+
+  def mapHref = s"https://www.google.com/maps/place/@${GPSLatitude},${GPSLongitude},${GPSAltitude}z"
+  //
+  //  def distance(position: Position): Option[String] = current map { x => distance(position, x) }
+  def closestLocation: Gps = Gps.locations.map(place => (place, distanceTo(this))).minBy(_._2.meters)._1
+}
+case class ExifTags(initialTags: RichExif.Tags) {
+  var tags = initialTags
   def fileNumberMinor = tags.getInt("exifFileNumberMinor")
   def fileNumberMajor = tags.getInt("exifFileNumberMajor")
   def fileNumber = tags.getInt("exifFileNumber")
+  def gps() = tags.getString("exifGPSLatitude").map { x =>
+    Gps(
+      GPSLatitude = tags.getString("exifGPSLatitude").get,
+      GPSLatitudeRef = tags.getString("exifGPSLatitudeRef").get,
+      GPSLongitude = tags.getString("exifGPSLongitude").get,
+      GPSLongitudeRef = tags.getString("exifGPSLongitudeRef").get,
+      GPSAltitude = tags.getString("exifGPSAltitude").get,
+      GPSAltitudeRef = tags.getString("exifGPSAltitudeRef").get)
+  }
 }
 object RichExif extends RichExif
 class RichExif extends AutoCloseable {
@@ -51,7 +104,8 @@ class RichExif extends AutoCloseable {
   type MetadataProvider = (String) => MetadataResult
   type MetadataMapType = Map[String, MetadataProvider]
   case class Tags(tags: MetadataMapType) {
-    def getInt(tag:String) = tags.get(tag).map(_("").get.toInt)
+    def getInt(tag: String) = getString(tag).map(_.toInt)
+    def getString(tag: String) = tags.get(tag).map(_("").get)
     def toSimpleMap: Map[String, String] =
       tags.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
     //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html

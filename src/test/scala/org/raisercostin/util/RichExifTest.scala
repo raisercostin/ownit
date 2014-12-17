@@ -38,13 +38,11 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   test("analyze exifFileNumber") {
     val file = Locations.classpath("IMG_1558.JPG")
     val tags = extractExifTags(file.toFile)
-    //println(tags.toSimpleMap.mkString("\n"))
     assertEquals("IMG_${exifFileNumberMinor}.JPG", tags.analyze(file.name))
   }
   test("exif detected format") {
     val file = Locations.classpath("IMG_1558.JPG").toFile
     val tags = ExifTags(extractExifTags(file))
-    //println(tags.tags.toSimpleMap.mkString("\n"))
     assertEquals(1558, tags.fileNumberMinor.get)
     assertEquals(401, tags.fileNumberMajor.get)
     assertEquals(4011558, tags.fileNumber.get)
@@ -53,7 +51,15 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
     val file = Locations.classpath("20140206_135438_Rue Guimard.jpg")
     val tags = ExifTags(extractExifTags(file.toFile))
     println(tags.tags.toSimpleMap.mkString("\n"))
-    //assertEquals("IMG_${exifFileNumberMinor}.JPG", tags.analyze(file.name))
+    println(tags.gps)
+    println(tags.gps.get.mapHref)
+    assertEquals("Some(Gps(50.8436241111111,N,4.36987875,E,0.0,0,None))",tags.gps.toString)
+    val same = Gps("50.8436241111111","N","4.36987875","E","0.0","0")
+    assertEquals(same,tags.gps.get)
+    val pitesti = Gps("44.860046","N","24.867838","E","13.0","0")
+    val bucharest = Gps("44.4378258","N","26.0946376","E","12","0")
+    assertEquals(107806, pitesti.distanceTo(bucharest).meters.toInt)
+    assertEquals("pitesti",tags.gps.get.closestLocation.name.get)
   }
   test("analyze file name containing spaces") {
     extractExifTags(Locations.classpath("a b.jpg").toFile)
