@@ -39,7 +39,7 @@ object Gps {
   lazy val locations = Seq(
       Gps("44.860046", "N", "24.867838", "E", "13.0", "0", Some("pitesti")),
       Gps("44.4378258","N","26.0946376","E","12","0",Some("bucuresti")),
-      Gps("50.8387","N","4.363405","E","12","0",Some("brusells"))
+      Gps("50.854975","N","4.3753899","E","12","0",Some("brussels"))
   )
 }
 //https://www.google.com/maps/place/@44.85597,24.8735028,13z
@@ -66,10 +66,14 @@ case class Gps(GPSLatitude: String, GPSLatitudeRef: String, GPSLongitude: String
 
   private def toRad(value: Double): Double = value * Math.PI / 180
 
-  def mapHref = s"https://www.google.com/maps/place/@${GPSLatitude},${GPSLongitude},${GPSAltitude}z"
+  def mapHref = s"https://www.google.com/maps/@${GPSLatitude},${GPSLongitude},14z"
   //
   //  def distance(position: Position): Option[String] = current map { x => distance(position, x) }
-  def closestLocation: Gps = Gps.locations.map(place => (place, distanceTo(this))).minBy(_._2.meters)._1
+  def closestLocation: Gps = {
+    val a = Gps.locations.map(place => (place, distanceTo(place)))
+    println(a)
+    a.minBy(_._2.meters)._1
+  }
 }
 case class ExifTags(initialTags: RichExif.Tags) {
   var tags = initialTags

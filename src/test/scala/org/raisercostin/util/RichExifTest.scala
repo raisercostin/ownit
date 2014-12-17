@@ -56,10 +56,14 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
     assertEquals("Some(Gps(50.8436241111111,N,4.36987875,E,0.0,0,None))",tags.gps.toString)
     val same = Gps("50.8436241111111","N","4.36987875","E","0.0","0")
     assertEquals(same,tags.gps.get)
-    val pitesti = Gps("44.860046","N","24.867838","E","13.0","0")
-    val bucharest = Gps("44.4378258","N","26.0946376","E","12","0")
+    val pitesti = Gps("44.860046","N","24.867838","E","13.0","0",Some("pitesti"))
+    val bucharest = Gps("44.4378258","N","26.0946376","E","12","0",Some("bucharest"))
+    val brussels = Gps("50.854975","N","4.3753899","E","12","0",Some("brussels"))
     assertEquals(107806, pitesti.distanceTo(bucharest).meters.toInt)
-    assertEquals("pitesti",tags.gps.get.closestLocation.name.get)
+    assertEquals(1320,tags.gps.get.distanceTo(brussels).meters.toInt)
+    assertEquals(1768176,tags.gps.get.distanceTo(bucharest).meters.toInt)
+    assertEquals(1660843,tags.gps.get.distanceTo(pitesti).meters.toInt)
+    assertEquals("brussels",tags.gps.get.closestLocation.name.get)
   }
   test("analyze file name containing spaces") {
     extractExifTags(Locations.classpath("a b.jpg").toFile)
