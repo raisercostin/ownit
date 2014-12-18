@@ -68,9 +68,9 @@ trait BaseLocation extends NavigableLocation {
     //def toSource: BufferedSource = scala.io.Source.fromInputStream(toInputStream, "UTF-8")
   }
   def absolute: String = toPath("").toAbsolutePath.toString
-  def extractAncestor(ancestor: BaseLocation): Try[Seq[String]] = diff(absolute, ancestor.absolute).map { _.split(Pattern.quote(FILE_SEPARATOR)) }
-  def relativeTo(ancestor: BaseLocation) = extractAncestor(ancestor).get.foldLeft("")((x, y) => x + FILE_SEPARATOR + y)
-  private def diff(text: String, prefix: String) = if (text.startsWith(prefix)) Success(text.substring(prefix.length)) else Failure(new RuntimeException(s"Text [$text] doesn't start with [$prefix]."))
+  def extractAncestor(ancestor: BaseLocation): Try[Seq[String]] = diff(absolute, ancestor.absolute).map{ _.split(Pattern.quote(FILE_SEPARATOR)).filterNot(_.trim.isEmpty) }
+  def relativeTo(ancestor: BaseLocation) = extractAncestor(ancestor).get.foldLeft("")((x, y) => (if(x.isEmpty) "" else (x + FILE_SEPARATOR) ) + y)
+  def diff(text: String, prefix: String) = if (text.startsWith(prefix)) Success(text.substring(prefix.length)) else Failure(new RuntimeException(s"Text [$text] doesn't start with [$prefix]."))
   def isAbsolute = toFile.isAbsolute()
   def mkdirIfNecessary: this.type = {
     FileUtils.forceMkdir(toFile)
@@ -251,6 +251,9 @@ object ClassPathInputLocation {
     //Option(Thread.currentThread().getContextClassLoader).orElse
     (Option(classOf[ClassPathInputLocation].getClassLoader)).orElse(Option(classOf[ClassLoader].getClassLoader)).get
 }
+/**
+ * @see http://www.thinkplexx.com/learn/howto/java/system/java-resource-loading-explained-absolute-and-relative-names-difference-between-classloader-and-class-resource-loading
+ */
 case class ClassPathInputLocation(initialResourcePath: String) extends InputLocation {
   def raw = initialResourcePath
   import ClassPathInputLocation._
@@ -272,7 +275,7 @@ case class ZipInputLocation(zip: InputLocation, entry: Option[java.util.zip.ZipE
     case None =>
       ZipInputLocation(zip, Some(rootzip.getEntry(child))).asInstanceOf[this.type]
     case Some(entry) =>
-      ZipInputLocation(zip, Some(rootzip.getEntry(entry.getName()+"/"+child))).asInstanceOf[this.type]
+      ZipInputLocation(zip, Some(rootzip.getEntry(entry.getName() + "/" + child))).asInstanceOf[this.type]
   }
 
   def toFile: File = zip.toFile
@@ -297,9 +300,6 @@ case class StreamLocation(val inputStream: InputStream) extends InputLocation {
   override def toInputStream: InputStream = inputStream
 }
 object Locations {
-  /**
-   * @see http://www.thinkplexx.com/learn/howto/java/system/java-resource-loading-explained-absolute-and-relative-names-difference-between-classloader-and-class-resource-loading
-   */
   def classpath(resourcePath: String): ClassPathInputLocation =
     new ClassPathInputLocation(resourcePath)
   def file(fileFullPath: String): FileLocation =
