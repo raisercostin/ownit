@@ -20,4 +20,19 @@ class LocationsTest extends FunSuite {
     assertEquals("a b.jpg", file.absolute.takeRight(7))
     assertEquals("a b.jpg", file.name)
   }
+  
+  test("unzip"){
+    assertEquals("""ZipInputLocation(ClassPathInputLocation(location.zip),Some(c/))
+ZipInputLocation(ClassPathInputLocation(location.zip),Some(c/d.txt))
+ZipInputLocation(ClassPathInputLocation(location.zip),Some(a.txt))
+ZipInputLocation(ClassPathInputLocation(location.zip),Some(b.txt))
+ZipInputLocation(ClassPathInputLocation(location.zip),Some(c/e/))
+ZipInputLocation(ClassPathInputLocation(location.zip),Some(c/e/f.txt))""".replaceAll("\r",""), Locations.classpath("location.zip").unzip.list.mkString("\n"))
+    assertEquals("""a - file content""", Locations.classpath("location.zip").unzip.child("a.txt").readContent)
+    assertEquals("""f content""", Locations.classpath("location.zip").unzip.child("c/e/f.txt").readContent)
+    assertEquals("""ZipInputLocation[ClassPathInputLocation(location.zip),Some(c)]""", Locations.classpath("location.zip").unzip.child("c").raw)
+    assertEquals("""ZipInputLocation[ClassPathInputLocation(location.zip),Some(c/e)]""", Locations.classpath("location.zip").unzip.child("c").child("e").raw)
+    assertEquals("""ZipInputLocation[ClassPathInputLocation(location.zip),Some(c/e/f.txt)]""", Locations.classpath("location.zip").unzip.child("c").child("e").child("f.txt").raw)
+    assertEquals("""f content""", Locations.classpath("location.zip").unzip.child("c").child("e").child("f.txt").readContent)
+  }
 }

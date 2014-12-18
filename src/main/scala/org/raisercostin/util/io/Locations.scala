@@ -44,7 +44,7 @@ trait NavigableLocation {
   def descendant(childs: Seq[String]): this.type = if (childs.isEmpty) this else child(childs.head).descendant(childs.tail)
 }
 trait BaseLocation extends NavigableLocation {
-  def raw:String
+  def raw: String
   def extension: String = FilenameUtils.getExtension(absolute)
   def name: String = FilenameUtils.getName(absolute)
   def baseName: String = FilenameUtils.getBaseName(absolute)
@@ -81,15 +81,15 @@ trait BaseLocation extends NavigableLocation {
     parent.mkdirIfNecessary
     this
   }
-  def pathInRaw:String = {
-    val a= raw.replaceAll("""^([^*]*)[*].*$""","$1");
+  def pathInRaw: String = {
+    val a = raw.replaceAll("""^([^*]*)[*].*$""", "$1");
     println(a);
     a
   }
-  def list: Seq[FileLocation] = Option(existing.toFile.listFiles).getOrElse(Array[File]()).map(Locations.file(_))
-  def traverse:Traversable[(Path, BasicFileAttributes)] = if(raw contains "*")
+  def list: Iterator[InputLocation] = Option(existing).map(_.toFile.listFiles.toIterator).getOrElse(Iterator()).map(Locations.file(_))
+  def traverse: Traversable[(Path, BasicFileAttributes)] = if (raw contains "*")
     Locations.file(pathInRaw).parent.traverse
-  else 
+  else
     new FileVisitor.TraversePath(toPath)
   def traverseFiles = if (exists) traverse.map { case (file, attr) => file } else Traversable()
 
@@ -143,11 +143,12 @@ trait InputLocation extends BaseLocation {
     //    import encodings.`UTF-8`
     //    val src = uri"http://rapture.io/sample.json".slurp[Char]
     //existing(toSource).getLines mkString ("\n")
-    try{IOUtils.toString(toInputStream)}catch{case x:Throwable=> throw new RuntimeException("While reading "+this,x)}
+    try { IOUtils.toString(toInputStream) } catch { case x: Throwable => throw new RuntimeException("While reading " + this, x) }
   }
   def readContentAsText: Try[String] =
     Try(readContent)
   //Try(existing(toSource).getLines mkString ("\n"))
+  def unzip: ZipInputLocation = ???
 }
 trait OutputLocation extends BaseLocation {
   def asInput: InputLocation
@@ -197,7 +198,7 @@ trait OutputLocation extends BaseLocation {
       Files.createLink(toPath, src.toPath)
     } else {
       if (exists) {
-        throw new RuntimeException("Destination file "+this+" already exists.")
+        throw new RuntimeException("Destination file " + this + " already exists.")
       } else {
         Files.createLink(toPath, src.toPath)
       }
@@ -207,7 +208,7 @@ trait OutputLocation extends BaseLocation {
 trait InOutLocation extends InputLocation with OutputLocation {
 }
 
-case class FileLocation(val fileFullPath: String, append: Boolean = false) extends InOutLocation {
+case class FileLocation(fileFullPath: String, append: Boolean = false) extends InOutLocation {
   def raw = fileFullPath
   def asInput: InputLocation = this
   lazy val toFile: File = new File(fileFullPath)
@@ -250,27 +251,51 @@ object ClassPathInputLocation {
     //Option(Thread.currentThread().getContextClassLoader).orElse
     (Option(classOf[ClassPathInputLocation].getClassLoader)).orElse(Option(classOf[ClassLoader].getClassLoader)).get
 }
-case class ClassPathInputLocation(val initialResourcePath: String) extends InputLocation {
+case class ClassPathInputLocation(initialResourcePath: String) extends InputLocation {
   def raw = initialResourcePath
   import ClassPathInputLocation._
   lazy val resourcePath = initialResourcePath.stripPrefix("/")
   override def toUrl: java.net.URL = getSpecialClassLoader.getResource(resourcePath)
-  override def absolute: String = toUrl.toURI().getPath()//Try{toFile.getAbsolutePath()}.recover{case e:Throwable => Option(toUrl).map(_.toExternalForm).getOrElse("unfound classpath://" + resourcePath) }.get
-  def toFile: File = Try{new File(toUrl.toURI())}.recoverWith{case e:Throwable=>Failure(new RuntimeException("Couldn't get file from "+this,e))}.get
+  override def absolute: String = toUrl.toURI().getPath() //Try{toFile.getAbsolutePath()}.recover{case e:Throwable => Option(toUrl).map(_.toExternalForm).getOrElse("unfound classpath://" + resourcePath) }.get
+  def toFile: File = Try { new File(toUrl.toURI()) }.recoverWith { case e: Throwable => Failure(new RuntimeException("Couldn't get file from " + this, e)) }.get
   override def toInputStream: InputStream = getSpecialClassLoader.getResourceAsStream(resourcePath)
   def child(child: String): this.type = new ClassPathInputLocation(resourcePath + FILE_SEPARATOR + child).asInstanceOf[this.type]
   def parent: this.type = new ClassPathInputLocation(parentName).asInstanceOf[this.type]
   ///def toWrite = Locations.file(toFile.getAbsolutePath)
+  override def unzip: ZipInputLocation = new ZipInputLocation(this, None)
+}
+
+case class ZipInputLocation(zip: InputLocation, entry: Option[java.util.zip.ZipEntry]) extends InputLocation {
+  def raw = "ZipInputLocation[" + zip + "," + entry + "]"
+  def parent: this.type = ???
+  def child(child: String): this.type = entry match {
+    case None =>
+      ZipInputLocation(zip, Some(rootzip.getEntry(child))).asInstanceOf[this.type]
+    case Some(entry) =>
+      ZipInputLocation(zip, Some(rootzip.getEntry(entry.getName()+"/"+child))).asInstanceOf[this.type]
+  }
+
+  def toFile: File = zip.toFile
+  override def toInputStream: InputStream = entry match {
+    case None =>
+      throw new RuntimeException("Can't read stream from zip folder " + this)
+    case Some(entry) =>
+      rootzip.getInputStream(entry)
+  }
+  override def list: Iterator[InputLocation] = Option(existing).map(_ => entries).getOrElse(Iterator()).map(entry => ZipInputLocation(zip, Some(entry)))
+
+  private lazy val rootzip = new java.util.zip.ZipFile(toFile)
+  import collection.JavaConverters._
+  private lazy val entries = rootzip.entries.asScala
 }
 
 case class StreamLocation(val inputStream: InputStream) extends InputLocation {
-  def raw = "inputStream["+inputStream+"]"
+  def raw = "inputStream[" + inputStream + "]"
   def child(child: String): this.type = ???
   def parent: this.type = ???
   def toFile: File = ???
   override def toInputStream: InputStream = inputStream
 }
-
 object Locations {
   /**
    * @see http://www.thinkplexx.com/learn/howto/java/system/java-resource-loading-explained-absolute-and-relative-names-difference-between-classloader-and-class-resource-loading
