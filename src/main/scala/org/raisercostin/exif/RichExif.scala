@@ -28,6 +28,7 @@ import scala.util.Success
 import scala.util.Try
 import scala.util.matching.Regex
 import org.raisercostin.util.io.Locations
+import org.raisercostin.util.io.InputLocation
 case class Distance(meters: Double) {
   def toInternational =
     if (meters >= 1.0)
@@ -36,11 +37,22 @@ case class Distance(meters: Double) {
       f"${meters / 1000}%.0f m"
 }
 object Gps {
-  lazy val locations = Seq(
-      Gps("44.860046", "N", "24.867838", "E", "13.0", "0", Some("pitesti")),
-      Gps("44.4378258","N","26.0946376","E","12","0",Some("bucuresti")),
-      Gps("50.854975","N","4.3753899","E","12","0",Some("brussels"))
-  )
+  //http://download.geonames.org/export/dump/cities1000.zip
+  lazy val locations = fromFile(Locations.classpath("cities1000.zip").unzip)
+  def fromFile(src: InputLocation): Seq[Gps] = {
+    //    0         1            2          3                       4          5    6   7   8       9                10           11         12            13
+    //3039154	El Tarter	El Tarter	Ehl Tarter,Эл Тартер	42.57952	1.65362	P	PPL	AD		02				1052		1721	Europe/Andorra	2012-11-03
+    src.child("cities1000.txt").readLines.map { line =>
+      val fields = line.split("\t")
+      Gps(fields(4), "N", fields(5), "E", "12", "0", Some(fields(1)))
+    }.toSeq
+  }
+  def custom = Seq(
+    Gps("44.860046", "N", "24.867838", "E", "13.0", "0", Some("pitesti")),
+    Gps("44.4378258", "N", "26.0946376", "E", "12", "0", Some("bucuresti")),
+    Gps("50.854975", "N", "4.3753899", "E", "12", "0", Some("brussels")))
+  def apply(GPSLatitude: String, GPSLongitude: String) = 
+    new Gps(GPSLatitude,if(GPSLatitude.toDouble>=0)"N" else "S",GPSLongitude,if(GPSLongitude.toDouble>=0)"E" else "W","0","0",None)
 }
 //https://www.google.com/maps/place/@44.85597,24.8735028,13z
 //https://www.google.com/maps/place/Pite%C8%99ti,+Romania/@44.85597,24.8735028,13z
@@ -70,10 +82,14 @@ case class Gps(GPSLatitude: String, GPSLatitudeRef: String, GPSLongitude: String
   //
   //  def distance(position: Position): Option[String] = current map { x => distance(position, x) }
   def closestLocation: Gps = {
-    val a = Gps.locations.map(place => (place, distanceTo(place)))
-    println(a)
-    a.minBy(_._2.meters)._1
+    val b = Gps.locations.toIterator.filter(location => near(location.latitude, 10))
+    val a = b.minBy(place => distanceTo(place).meters) //map(place => (place, distanceTo(place)))
+    //println(a)
+    //a.minBy(_._2.meters)._1
+    a
   }
+  //Each degree of latitude is approximately 69 miles (111 kilometers) apart.
+  def near(newLatitude: Double, delta: Double) = (latitude - newLatitude).abs * 111 <= delta
 }
 case class ExifTags(initialTags: RichExif.Tags) {
   var tags = initialTags
@@ -83,11 +99,15 @@ case class ExifTags(initialTags: RichExif.Tags) {
   def gps() = tags.getString("exifGPSLatitude").map { x =>
     Gps(
       GPSLatitude = tags.getString("exifGPSLatitude").get,
-      GPSLatitudeRef = tags.getString("exifGPSLatitudeRef").get,
-      GPSLongitude = tags.getString("exifGPSLongitude").get,
-      GPSLongitudeRef = tags.getString("exifGPSLongitudeRef").get,
-      GPSAltitude = tags.getString("exifGPSAltitude").get,
-      GPSAltitudeRef = tags.getString("exifGPSAltitudeRef").get)
+      //GPSLatitudeRef = tags.getString("exifGPSLatitudeRef").getOrElse("N"),
+      GPSLongitude = tags.getString("exifGPSLongitude").get
+      //GPSLongitudeRef = tags.getString("exifGPSLongitudeRef").get,
+      //GPSAltitude = tags.getString("exifGPSAltitude").getOrElse("0"),
+      //GPSAltitudeRef = tags.getString("exifGPSAltitudeRef").getOrElse("0"))
+    )
+  }
+  gps().flatMap {_.closestLocation.name}.map{name =>
+    tags = tags.withTag("compClosestLocation" -> name)
   }
 }
 object RichExif extends RichExif
@@ -231,6 +251,7 @@ class RichExif extends AutoCloseable {
       result = replaceAllLiterally(result, "${" + prefix, "${" + prefix2)
       result
     }
+    def withTag(value:Pair[String,Any])=Tags(tags + (value._1 -> formatted(value._2)_))
   }
 
   private def formatted(value: Any)(format: String): MetadataResult =
