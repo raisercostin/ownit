@@ -1,6 +1,5 @@
 package org.raisercostin.exif
 
-import com.thebuzzmedia.exiftool.ExifToolService
 import com.thebuzzmedia.exiftool.Feature
 import com.thenewmotion.time.Imports.DateTime
 import com.thenewmotion.time.Imports.DateTimeFormat
@@ -119,7 +118,7 @@ class RichExif extends AutoCloseable {
   import scala.util.Try
   import scala.util.Success
   import scala.collection.immutable.TreeMap
-  lazy val tool = ExifToolService.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+  lazy val tool = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
   override def close = {
     tool.shutdown()
   }
@@ -361,7 +360,7 @@ class RichExif extends AutoCloseable {
   private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
     import scala.collection.JavaConversions._
 
-    val valueMap = tool.getImageMeta(file).map(x => prefix + x._1.getKey() -> formatted(x._2)_)
+    val valueMap = tool.getImageMeta(file, new ReadOptions().withNumericOutput(true)).map(x => prefix + x._1 -> formatted(x._2)_)
     //println(valueMap mkString "\n")
     Map() ++ valueMap
   }

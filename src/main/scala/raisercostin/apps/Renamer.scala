@@ -14,6 +14,9 @@ import org.raisercostin.exif.ExifTags
 object Renamer {
   def main(args: Array[String]) = {
     test
+    //main2(args)
+  }
+  def main2(args: Array[String]) = {
     args match {
       case Array(from: String, to: String) =>
         ownPics(from, to)
@@ -25,7 +28,8 @@ object Renamer {
   }
 
   def test = {
-    ownPics("""d:\personal\photos""","""d:\personal\photos-proposed1""")
+    ownPics("""d:\photos-2014-12-18""","""d:\photos-2014-12-18-proposed1""")
+    //ownPics("""d:\personal\photos""","""d:\personal\photos-proposed1""")
     //ownPics("""d:\personal\photos\2013-XX-XX\""","""d:\proposed2""")
     //ownPics(""".\test\special11""","""d:\proposed11""")
     //ownPics("""D:\personal\work\ownit\.\test\special6\1980-01-01--00-00-10---MVI_1723.AVI""","""d:\proposed3""")
