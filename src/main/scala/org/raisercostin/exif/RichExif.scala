@@ -50,8 +50,8 @@ object Gps {
     Gps("44.860046", "N", "24.867838", "E", "13.0", "0", Some("pitesti")),
     Gps("44.4378258", "N", "26.0946376", "E", "12", "0", Some("bucuresti")),
     Gps("50.854975", "N", "4.3753899", "E", "12", "0", Some("brussels")))
-  def apply(GPSLatitude: String, GPSLongitude: String) = 
-    new Gps(GPSLatitude,if(GPSLatitude.toDouble>=0)"N" else "S",GPSLongitude,if(GPSLongitude.toDouble>=0)"E" else "W","0","0",None)
+  def apply(GPSLatitude: String, GPSLongitude: String) =
+    new Gps(GPSLatitude, if (GPSLatitude.toDouble >= 0) "N" else "S", GPSLongitude, if (GPSLongitude.toDouble >= 0) "E" else "W", "0", "0", None)
 }
 //https://www.google.com/maps/place/@44.85597,24.8735028,13z
 //https://www.google.com/maps/place/Pite%C8%99ti,+Romania/@44.85597,24.8735028,13z
@@ -103,9 +103,9 @@ case class ExifTags(initialTags: RichExif.Tags) {
       //GPSLongitudeRef = tags.getString("exifGPSLongitudeRef").get,
       //GPSAltitude = tags.getString("exifGPSAltitude").getOrElse("0"),
       //GPSAltitudeRef = tags.getString("exifGPSAltitudeRef").getOrElse("0"))
-    )
+      )
   }
-  gps().flatMap {_.closestLocation.name}.map{name =>
+  gps().flatMap { _.closestLocation.name }.map { name =>
     tags = tags.withTag("compClosestLocation" -> name)
   }
 }
@@ -126,7 +126,7 @@ class RichExif extends AutoCloseable {
   type MetadataResult = Try[String]
   type MetadataProvider = (String) => MetadataResult
   type MetadataMapType = Map[String, MetadataProvider]
-  case class Tags(tags: MetadataMapType) {
+  case class Tags(tags: MetadataMapType, constants: Seq[String] = Seq()) {
     def getInt(tag: String) = getString(tag).map(_.toInt)
     def getString(tag: String) = tags.get(tag).map(_("").get)
     def toSimpleMap: Map[String, String] =
@@ -222,6 +222,9 @@ class RichExif extends AutoCloseable {
       result = extractTagFromString(result, "exifFileNumber")
       result = extractTagFromString(result, "exifFileNumberMajor")
       result = extractTagFromString(result, "exifFileNumberMinor")
+      constants.foreach { constant =>
+        result = extractConstantFromString(result, constant)
+      }
       result
     }
     private def extractTagFromString(text: String, tag: String): String = {
@@ -237,6 +240,9 @@ class RichExif extends AutoCloseable {
           text
       }
     }
+    private def extractConstantFromString(text: String, constant: String): String = {
+      replaceFirstLiterally(text, constant, "${const:" + constant + "}")
+    }
     private def countSubstring(str: String, substr: String) = Pattern.quote(substr).r.findAllMatchIn(str).length
     private def extractDateFromString(text: String, date: DateTime, prefix2: String, suffix: String = "+"): String = {
       var result = text
@@ -250,7 +256,7 @@ class RichExif extends AutoCloseable {
       result = replaceAllLiterally(result, "${" + prefix, "${" + prefix2)
       result
     }
-    def withTag(value:Pair[String,Any])=Tags(tags + (value._1 -> formatted(value._2)_))
+    def withTag(value: Pair[String, Any]) = Tags(tags + (value._1 -> formatted(value._2)_))
   }
 
   private def formatted(value: Any)(format: String): MetadataResult =
@@ -344,24 +350,24 @@ class RichExif extends AutoCloseable {
     //println(toSimpleMap(all) mkString "\n")
     //file system data
     val location = Locations.file(file)
-    val tags = Tags(all).extractFormat(file)
-    val fs = Map(tagFileExtension -> formatted(location.extension)_,
-      tagCompRemaining -> formatted(cleanFormat(tags))_,
-      tagCompDetectedFormat -> formatted(tags)_)
-    var result = fs ++ all
+    var result = all
     all.get("exifFileNumber").map { exifFileNumber =>
       exifFileNumber("").get.toInt
     }.map { exifFileNumber =>
-      result += "exifFileNumberMajor" -> formatted(exifFileNumber / 10000)_
-      result += "exifFileNumberMinor" -> formatted(exifFileNumber % 10000)_
+      result += "exifFileNumberMajor" -> formatted("%d".format(exifFileNumber / 10000))_
+      result += "exifFileNumberMinor" -> formatted("%04d".format(exifFileNumber % 10000))_
     }
+    val tags = Tags(result).extractFormat(file)
+    result ++= Map(tagFileExtension -> formatted(location.extension)_,
+      tagCompRemaining -> formatted(cleanFormat(tags))_,
+      tagCompDetectedFormat -> formatted(tags)_)
     Tags(TreeMap(result.toSeq: _*))
   }
   private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
     import scala.collection.JavaConversions._
 
     val valueMap = tool.getImageMeta(file, new ReadOptions().withNumericOutput(true)).map(x => prefix + x._1 -> formatted(x._2)_)
-    //println(valueMap mkString "\n")
+    println(valueMap mkString "\n")
     Map() ++ valueMap
   }
 

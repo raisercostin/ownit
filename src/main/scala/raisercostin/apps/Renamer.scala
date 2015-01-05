@@ -13,8 +13,9 @@ import org.raisercostin.exif.ExifTags
 
 object Renamer {
   def main(args: Array[String]) = {
-    test
+    //test
     //main2(args)
+    ownPics("""d:\personal\photos3""","""proposed1""")
   }
   def main2(args: Array[String]) = {
     args match {
@@ -78,10 +79,11 @@ object Renamer {
           Try {
             //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
             //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
-            val tags = ExifTags(RichExif.extractExifTags(file))
+            val tags = ExifTags(RichExif.extractExifTags(file).copy(constants=Seq("IMG")))
             //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-            val newName = tags.tags.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compClosestLocation--$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
+            println("detected "+tags.tags.analyze(src.relativeTo(src.parent.parent)))
+            val newName = tags.tags.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumberMajor-IMG_$exifFileNumberMinor---$compClosestLocation--$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
             val ANSI_BACK = "" //"\u001B[1F";
 
             val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")

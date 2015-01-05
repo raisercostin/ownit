@@ -37,8 +37,8 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   }
   test("analyze exifFileNumber") {
     val file = Locations.classpath("IMG_1558.JPG")
-    val tags = extractExifTags(file.toFile)
-    assertEquals("IMG_${exifFileNumberMinor}.JPG", tags.analyze(file.name))
+    val tags = extractExifTags(file.toFile).copy(constants=Seq("IMG"))
+    assertEquals("${const:IMG}_${exifFileNumberMinor}.JPG", tags.analyze(file.name))
   }
   test("exif detected format") {
     val file = Locations.classpath("IMG_1558.JPG").toFile
