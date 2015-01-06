@@ -37,8 +37,9 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   }
   test("analyze exifFileNumber") {
     val file = Locations.classpath("IMG_1558.JPG")
-    val tags = extractExifTags(file.toFile).copy(constants=Seq("IMG"))
+    val tags = extractExifTags(file.toFile, Seq("IMG"))
     assertEquals("${const:IMG}_${exifFileNumberMinor}.JPG", tags.analyze(file.name))
+    assertEquals("", tags.interpolate("$compRemaining"));
   }
   test("exif detected format") {
     val file = Locations.classpath("IMG_1558.JPG").toFile
@@ -71,10 +72,16 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   test("analyze interpolate with gps") {
     val file = Locations.classpath("20140206_135438_Rue Guimard.jpg")
     val tags = ExifTags(extractExifTags(file.toFile))
-    assertEquals("2014-02-06--13-54-38------Brussels--Rue Guimard.jpg",tags.tags.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compClosestLocation--$compRemaining.$fileExtension"))
+    assertEquals("2014-02-06--13-54-38------Brussels--Rue Guimard.jpg", tags.tags.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber---$compClosestLocation--$compRemaining.$fileExtension"))
   }
   test("analyze file name containing spaces") {
     extractExifTags(Locations.classpath("a b.jpg").toFile)
+  }
+  test("analyze duble files") {
+    val file = Locations.classpath("MVI_2366.MOV")
+    val tags = extractExifTags(file.toFile)
+    val newName = tags.analyze(file.name)
+    assertEquals("${exifModifyDate+1s+yyyy}${exifModifyDate+1s+MM}${exifModifyDate+1s+dd}_${exifModifyDate+1s+HH}${exifModifyDate+1s+mm}${exifModifyDate+1s+ss}.jpg", newName)
   }
   override def afterAll() {
     close()

@@ -126,7 +126,7 @@ class RichExif extends AutoCloseable {
   type MetadataResult = Try[String]
   type MetadataProvider = (String) => MetadataResult
   type MetadataMapType = Map[String, MetadataProvider]
-  case class Tags(tags: MetadataMapType, constants: Seq[String] = Seq()) {
+  case class Tags(tags: MetadataMapType) {
     def getInt(tag: String) = getString(tag).map(_.toInt)
     def getString(tag: String) = tags.get(tag).map(_("").get)
     def toSimpleMap: Map[String, String] =
@@ -163,11 +163,11 @@ class RichExif extends AutoCloseable {
         a
       }
     }
-    def extractFormat(file: File): String = {
-      analyze(Locations.file(file).baseName)
+    def extractFormat(file: File, constants:Seq[String]): String = {
+      analyze(Locations.file(file).baseName,constants)
     }
 
-    def analyze(value: String): String = {
+    def analyze(value: String, constants:Seq[String]=Seq("IMG")): String = {
       var result = value
       var message = List[String]()
 
@@ -312,7 +312,7 @@ class RichExif extends AutoCloseable {
       }
     }
 
-  def extractExifTags(file: File): Tags = {
+  def extractExifTags(file: File, constants2:Seq[String]=Seq("IMG")): Tags = {
       def extractExif2(prefix: String, file: File): Try[MetadataMapType] = {
         val exifTry = Try { extractExifAsMap(file).tags.map(x => (prefix + x._1, x._2)) }
         if (exifTry.isFailure) {
@@ -357,7 +357,7 @@ class RichExif extends AutoCloseable {
       result += "exifFileNumberMajor" -> formatted("%d".format(exifFileNumber / 10000))_
       result += "exifFileNumberMinor" -> formatted("%04d".format(exifFileNumber % 10000))_
     }
-    val tags = Tags(result).extractFormat(file)
+    val tags = Tags(result).extractFormat(file,constants2)
     result ++= Map(tagFileExtension -> formatted(location.extension)_,
       tagCompRemaining -> formatted(cleanFormat(tags))_,
       tagCompDetectedFormat -> formatted(tags)_)
@@ -367,7 +367,7 @@ class RichExif extends AutoCloseable {
     import scala.collection.JavaConversions._
 
     val valueMap = tool.getImageMeta(file, new ReadOptions().withNumericOutput(true)).map(x => prefix + x._1 -> formatted(x._2)_)
-    println(valueMap mkString "\n")
+    //println(valueMap mkString "\n")
     Map() ++ valueMap
   }
 
