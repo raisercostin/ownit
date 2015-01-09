@@ -121,6 +121,7 @@ class RichExif extends AutoCloseable {
   type MetadataResult = Try[String]
   type MetadataProvider = (String) => MetadataResult
   type MetadataMapType = Map[String, MetadataProvider]
+  type MetadataMapType2 = Map[String, String]
   case class Tags(tags: MetadataMapType) {
     def getInt(tag: String) = getString(tag).map(_.toInt)
     def getString(tag: String) = tags.get(tag).map(_("").get)
@@ -313,17 +314,17 @@ class RichExif extends AutoCloseable {
     //exif for avi in pair thm file?
     //exif metadata
     val location = Locations.file(file)
-    val fileAttributes= FileAttributesExtractor.extract(location)(0).tags
+    val fileAttributes= FileAttributesExtractor.extract(location) map(_.tags) getOrElse(Map())
     val all = exifFomFile ++ (fileAttributes.mapValues(x=>formatted(x)_))
     //println(toSimpleMap(all) mkString "\n")
     //file system data
     var result = all
-    all.get("exifFileNumber").map { exifFileNumber =>
-      exifFileNumber("").get.toInt
-    }.map { exifFileNumber =>
-      result += "exifFileNumberMajor" -> formatted("%d".format(exifFileNumber / 10000))_
-      result += "exifFileNumberMinor" -> formatted("%04d".format(exifFileNumber % 10000))_
-    }
+//    all.get("exifFileNumber").map { exifFileNumber =>
+//      exifFileNumber("").get.toInt
+//    }.map { exifFileNumber =>
+//      result += "exifFileNumberMajor" -> formatted("%d".format(exifFileNumber / 10000))_
+//      result += "exifFileNumberMinor" -> formatted("%04d".format(exifFileNumber % 10000))_
+//    }
     val tags = Tags(result).extractFormat(file, constants2)
     result ++= Map(tagFileExtension -> formatted(location.extension)_,
       tagCompRemaining -> formatted(cleanFormat(tags))_,
