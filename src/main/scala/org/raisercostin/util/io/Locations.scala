@@ -68,8 +68,8 @@ trait BaseLocation extends NavigableLocation {
     //def toSource: BufferedSource = scala.io.Source.fromInputStream(toInputStream, "UTF-8")
   }
   def absolute: String = toPath("").toAbsolutePath.toString
-  def extractAncestor(ancestor: BaseLocation): Try[Seq[String]] = diff(absolute, ancestor.absolute).map{ _.split(Pattern.quote(FILE_SEPARATOR)).filterNot(_.trim.isEmpty) }
-  def relativeTo(ancestor: BaseLocation) = extractAncestor(ancestor).get.foldLeft("")((x, y) => (if(x.isEmpty) "" else (x + FILE_SEPARATOR) ) + y)
+  def extractAncestor(ancestor: BaseLocation): Try[Seq[String]] = diff(absolute, ancestor.absolute).map { _.split(Pattern.quote(FILE_SEPARATOR)).filterNot(_.trim.isEmpty) }
+  def relativeTo(ancestor: BaseLocation) = extractAncestor(ancestor).get.foldLeft("")((x, y) => (if (x.isEmpty) "" else (x + FILE_SEPARATOR)) + y)
   def diff(text: String, prefix: String) = if (text.startsWith(prefix)) Success(text.substring(prefix.length)) else Failure(new RuntimeException(s"Text [$text] doesn't start with [$prefix]."))
   def isAbsolute = toFile.isAbsolute()
   def mkdirIfNecessary: this.type = {
@@ -105,6 +105,11 @@ trait BaseLocation extends NavigableLocation {
       this
     else
       throw new RuntimeException("[" + this + "] doesn't exist!")
+  def existingOption: Option[this.type] =
+    if (exists)
+      Some(this)
+    else
+      None
   def existing(source: BufferedSource) = {
     //if (source.nonEmpty)
     val hasNext = Try { source.hasNext }
@@ -122,6 +127,13 @@ trait BaseLocation extends NavigableLocation {
     logger.info(message(this))
     this
   }
+  def withBaseName(baseNameSupplier: String => String): this.type = parent.child(withExtension2(baseNameSupplier(baseName), extension))
+  def withName(nameSupplier: String => String): this.type = parent.child(nameSupplier(name))
+  def withExtension(extensionSupplier: String => String): this.type = parent.child(withExtension2(baseName, extensionSupplier(extension)))
+  protected def withExtension2(name: String, ext: String) =
+    if (ext.length > 0)
+      name + "." + ext
+    else name
 }
 trait InputLocation extends BaseLocation {
   def toInputStream: InputStream = new FileInputStream(absolute)
@@ -177,13 +189,6 @@ trait OutputLocation extends BaseLocation {
     }
     this
   }
-  def withBaseName(baseNameSupplier: String => String) = parent.child(withExtension2(baseNameSupplier(baseName), extension))
-  def withName(nameSupplier: String => String) = parent.child(nameSupplier(name))
-  def withExtension(extensionSupplier: String => String) = parent.child(withExtension2(baseName, extensionSupplier(extension)))
-  private def withExtension2(name: String, ext: String) =
-    if (ext.length > 0)
-      name + "." + ext
-    else name
   def usingOutputStream(op: OutputStream => Unit): Unit =
     using(toOutputStream)(outputStream => op(outputStream))
   def usingPrintWriter(op: PrintWriter => Unit): this.type =
@@ -258,7 +263,9 @@ case class ClassPathInputLocation(initialResourcePath: String) extends InputLoca
   def raw = initialResourcePath
   import ClassPathInputLocation._
   lazy val resourcePath = initialResourcePath.stripPrefix("/")
-  override def toUrl: java.net.URL = getSpecialClassLoader.getResource(resourcePath)
+  lazy val resource = getSpecialClassLoader.getResource(resourcePath)
+  override def toUrl: java.net.URL = resource
+  override def exists = resource != null
   override def absolute: String = toUrl.toURI().getPath() //Try{toFile.getAbsolutePath()}.recover{case e:Throwable => Option(toUrl).map(_.toExternalForm).getOrElse("unfound classpath://" + resourcePath) }.get
   def toFile: File = Try { new File(toUrl.toURI()) }.recoverWith { case e: Throwable => Failure(new RuntimeException("Couldn't get file from " + this, e)) }.get
   override def toInputStream: InputStream = getSpecialClassLoader.getResourceAsStream(resourcePath)
@@ -266,6 +273,13 @@ case class ClassPathInputLocation(initialResourcePath: String) extends InputLoca
   def parent: this.type = new ClassPathInputLocation(parentName).asInstanceOf[this.type]
   ///def toWrite = Locations.file(toFile.getAbsolutePath)
   override def unzip: ZipInputLocation = new ZipInputLocation(this, None)
+  override def parentName = {
+    val index = initialResourcePath.lastIndexOf("/")
+    if (index == -1)
+      ""
+    else
+      initialResourcePath.substring(0, index)
+  }
 }
 
 case class ZipInputLocation(zip: InputLocation, entry: Option[java.util.zip.ZipEntry]) extends InputLocation {

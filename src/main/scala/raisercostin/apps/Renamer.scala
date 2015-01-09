@@ -39,7 +39,7 @@ object Renamer {
   }
   def dumpInfo(file: String) = {
     import org.raisercostin.exif.RichExif._
-    println(extractExifAsMap(Locations.file(file).toFile).toSimpleMap.mkString("\n"))
+    println(extractExifTags(Locations.file(file).toFile).toSimpleMap.mkString("\n"))
   }
 
   import org.raisercostin.exif.RichExif
