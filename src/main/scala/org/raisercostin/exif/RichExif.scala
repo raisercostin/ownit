@@ -23,6 +23,7 @@ import scala.util.Try
 import scala.util.matching.Regex
 import org.raisercostin.util.io.Locations
 import org.raisercostin.util.io.InputLocation
+import org.raisercostin.own.FileAttributesExtractor
 case class Distance(meters: Double) {
   def toInternational =
     if (meters >= 1.0)
@@ -263,7 +264,7 @@ class RichExif extends AutoCloseable {
   val tagCompRemaining = "compRemaining"
   val tagCompDetectedFormat = "compDetectedFormat"
 
-  private val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss")
+  val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss")
   private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ")
   private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
@@ -311,19 +312,11 @@ class RichExif extends AutoCloseable {
     val exifFomFile = Try{extractExifUsingBuzzMedia(exifPrefix, file)}.getOrElse(Map())
     //exif for avi in pair thm file?
     //exif metadata
-
-    //file properties
-    import java.nio.file._
-    import java.nio.file.attribute._
-    val atts = Files.readAttributes(file.toPath, classOf[BasicFileAttributes], LinkOption.NOFOLLOW_LINKS)
-    import org.joda.time.DateTime
-    val fileAttributes = Map(
-      tagFileModificationDateTime -> formatted(new DateTime(atts.lastModifiedTime.toString).toString(exifDateTimeFormatter))_,
-      tagFileCreated -> formatted(new DateTime(atts.creationTime.toString).toString(exifDateTimeFormatter))_)
-    val all = exifFomFile ++ fileAttributes
+    val location = Locations.file(file)
+    val fileAttributes= FileAttributesExtractor.extract(location)(0).tags
+    val all = exifFomFile ++ (fileAttributes.mapValues(x=>formatted(x)_))
     //println(toSimpleMap(all) mkString "\n")
     //file system data
-    val location = Locations.file(file)
     var result = all
     all.get("exifFileNumber").map { exifFileNumber =>
       exifFileNumber("").get.toInt

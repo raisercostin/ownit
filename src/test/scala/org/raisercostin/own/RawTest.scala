@@ -41,6 +41,10 @@ class RawTest extends FunSuite with BeforeAndAfterAll {
     println(SanselanExifExtractor.extract(Locations.classpath("time1-IMG_2384.JPG"))(0).tags.mkString("\n"))
     checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), extract("time1-IMG_2384.JPG",SanselanExifExtractor))
   }
+  test("times1-fileAttribute") {
+    println(FileAttributesExtractor.extract(Locations.classpath("time1-IMG_2384.JPG"))(0).tags.mkString("\n"))
+    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), extract("time1-IMG_2384.JPG",FileAttributesExtractor))
+  }
   test("times2") {
     checkTime(new DateTime(2015, 1, 9, 0, 0, 42, local), extract("time2-MVI_2385.THM",false))
     checkTime(new DateTime(2015, 1, 9, 0, 0, 42, local).withZone(DateTimeZone.UTC), extract("time2-MVI_2385.MOV",false))
