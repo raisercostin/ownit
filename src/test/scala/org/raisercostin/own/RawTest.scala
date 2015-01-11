@@ -22,9 +22,12 @@ class RawTest extends FunSuite with BeforeAndAfterAll {
     assertEquals(214, tags.size)
   }
   test("best exif extractor") {
-    val tags = raw.bestExifFullExtractor(true)(Locations.classpath("MVI_2366.MOV")).tags
-    println(tags.mkString("\n"))
-    assertEquals(214, tags.size)
+    val tags = raw.bestExifFullExtractor(true)(Locations.classpath("MVI_2366.MOV")).tags.toSeq.sortBy(_._1)
+    val tags2 = raw2.BestExifExtractor.extract(Locations.classpath("MVI_2366.MOV")).get.tags.toSeq.sortBy(_._1)
+    //println(tags.mkString("\n"))
+//    assertEquals(214, tags2.size)
+//    assertEquals(214, tags.size)
+    assertEquals(tags2.mkString("\n"),tags.mkString("\n"))
   }
   def checkTime(expectedDateTime: DateTime, exifValue: String) =
     assertEquals("Picture taken at [" + expectedDateTime + "] with timezone " + expectedDateTime.getZone() + " at " + expectedDateTime.toDateTimeISO(),

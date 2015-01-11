@@ -8,6 +8,7 @@ trait Item {
   def has(tag: String): Seq[(String, String)]
 }
 case class SimpleItem(prefix: String, location: InputLocation, tags: Map[String, String]) extends Item {
+  //lazy val tags = tags2.map{case (key,value) => prefix+key -> value}
   def has(tag: String): Seq[(String, String)] = tags.filterKeys(_.contains(tag)).toSeq
 }
 case class CompositeItem(prefix: String, items: Seq[Item]) extends Item {
@@ -37,14 +38,11 @@ object raw {
     val atts = Files.readAttributes(location.toPath, classOf[BasicFileAttributes], LinkOption.NOFOLLOW_LINKS)
     import org.joda.time.DateTime
     val fileAttributes = Map(
+      tagFileExtension -> location.extension,
       tagFileModificationDateTime -> new DateTime(atts.lastModifiedTime.toString).toString(exifDateTimeFormatter),
       tagFileCreated -> new DateTime(atts.creationTime.toString).toString(exifDateTimeFormatter))
     fileAttributes
   }
-
-  val externalExifFullExtractor: FullExtractor = location => simpleItemizer("")(location, externalExifExtractor(location))
-
-  def simpleItemizer(prefix: String): Itemizer = (location, tags) => SimpleItem(prefix, location, tags)
 
   import com.thebuzzmedia.exiftool.RawExifTool
   import com.thebuzzmedia.exiftool.Feature
@@ -54,8 +52,14 @@ object raw {
     import scala.collection.JavaConversions._
     tool.getImageMeta(location.toFile, new ReadOptions().withNumericOutput(true)).toMap
   }
+  val allExtractors: Extractor = location => prefixKey(""/*file*/)(fileAttributesExtractor(location)) ++ prefixKey("exif")(externalExifExtractor(location))
+
+  val externalExifFullExtractor: FullExtractor = location => simpleItemizer("")(location, externalExifExtractor(location))
+
+  def simpleItemizer(prefix: String): Itemizer = (location, tags) => SimpleItem(prefix, location, tags)
+  private val prefixKey: String => Analyzer = prefix => tags => tags.map{case (key,value) => prefix+key -> value}
   private def bestExifExtractor: Boolean => InputLocation => Seq[Item] =
-    discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, allAnalyzers(externalExifExtractor(x._2))))
+    discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, (allExtractors andThen allAnalyzers)(x._2)))
   def bestExifFullExtractor: Boolean => InputLocation => Item =
     discoverPairs => location => CompositeItem("", bestExifExtractor(discoverPairs)(location))
 
@@ -92,6 +96,55 @@ object raw {
 //    import org.raisercostin.exif.RichExif
 //    location.map(x => simpleItemizer(x._1)(x._2, allAnalyzers(RichExif.extractExifTags(x._2.toFile).toSimpleMap))))
 //  }
+}
+
+object raw2{
+  object BestExifExtractor extends DecorationExtractor(ExternalExifExtractor(true))
+
+case class ExternalExifExtractor(discoverPairs: Boolean = true) extends Extractor {
+  import org.raisercostin.exif.RichExif
+  import com.thebuzzmedia.exiftool.RawExifTool
+  import com.thebuzzmedia.exiftool.Feature
+  import com.thebuzzmedia.exiftool.ReadOptions
+  def extract(location: InputLocation): Option[Item] = {
+    val isMovie = Seq("avi", "mov").contains(location.extension.toLowerCase)
+    val thm = if (discoverPairs && isMovie)
+      Stream("thm2", "THM", "thm") flatMap { ext => location.withExtension(_ => ext).existingOption.map(x => (ext, x)) } headOption
+    else
+      None
+    val locations = thm ++: Seq(("", location))
+    Some(CompositeItem("", locations.map(x => SimpleItem(x._1, x._2, RichExif.extractExifTags(x._2.toFile).toSimpleMap))))
+  }
+  private def extractExifUsingBuzzMedia(location: InputLocation): Map[String, String] = {
+    import scala.collection.JavaConversions._
+    tool.getImageMeta(location.toFile, new ReadOptions().withNumericOutput(true)).toMap
+  }
+  val tool = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+}
+object ExternalExifExtractor extends ExternalExifExtractor(true)
+
+case class DecorationExtractor(extractor: Extractor) extends Extractor {
+  def extract(location: InputLocation): Option[Item] = {
+    extractor.extract(location).map { item => SimpleItem("", location, extractFileNumberMajorAndMinor(item.tags) ++ /*extractFormat(item.tags) ++ */ item.tags) }
+  }
+
+  def extractFileNumberMajorAndMinor(tags: Map[String, String]): Map[String, String] = {
+    tags.get("exifFileNumber").map(_.toInt).toSeq.flatMap { exifFileNumber =>
+      Seq("exifFileNumberMajor" -> "%d".format(exifFileNumber / 10000), "exifFileNumberMinor" -> "%04d".format(exifFileNumber % 10000))
+    }.toMap
+  }
+  //
+  //  def extractFormat(tags: Map[String, String]): Map[String, String] = {
+  //    val tags = RichExif.Tags(tags).extractFormat(file, constants2)
+  //    result ++= Map(tagFileExtension -> formatted(location.extension)_,
+  //      tagCompRemaining -> formatted(cleanFormat(tags))_,
+  //      tagCompDetectedFormat -> formatted(tags)_)
+  //
+  //    tags.get("exifFileNumber").map(_.toInt).toSeq.flatMap { exifFileNumber =>
+  //      Seq("exifFileNumberMajor" -> "%d".format(exifFileNumber / 10000), "exifFileNumberMinor" -> "%04d".format(exifFileNumber % 10000))
+  //    }.toMap
+  //  }
+}
 }
 
 trait Extractor {
