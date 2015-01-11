@@ -14,11 +14,11 @@ class RawTest extends FunSuite with BeforeAndAfterAll {
   import org.raisercostin.exif._
   import org.raisercostin.exif.RichExif._
   test("extract exif from one file") {
-    val tags = ExternalExifExtractor(false).extract(Locations.classpath("MVI_2366.MOV")).map(_.tags).getOrElse(Map())
+    val tags = raw.externalExifExtractor(false)(Locations.classpath("MVI_2366.MOV")).tags
     assertEquals(69, tags.size)
   }
   test("extract exif from one pair too") {
-    val tags = ExternalExifExtractor(true).extract(Locations.classpath("MVI_2366.MOV")).map(_.tags).getOrElse(Map())
+    val tags = raw.externalExifExtractor(true)(Locations.classpath("MVI_2366.MOV")).tags
     assertEquals(214, tags.size)
   }
   test("best exif extractor") {
