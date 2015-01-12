@@ -4,7 +4,7 @@ import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
 import org.raisercostin.util.io.Locations
-import org.raisercostin.own.SanselanExifExtractor
+import org.raisercostin.own.raw
 
 @RunWith(classOf[JUnitRunner])
 class RichExifTest extends FunSuite with BeforeAndAfterAll {
@@ -12,7 +12,7 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   import org.raisercostin.exif.RichExif._
   test("extract exif from one file") {
     val file = Locations.classpath("20131008_175240.jpg")
-    val result = SanselanExifExtractor.extract(file)
+    val result = raw.sanselanExifExtractor(file)
     val result2 = extractExifTags(file.toFile).toSimpleMap
     assertEquals(result.mkString("\n"), result2.mkString("\n"))
     assertEquals(55, result.size)

@@ -23,7 +23,7 @@ import scala.util.Try
 import scala.util.matching.Regex
 import org.raisercostin.util.io.Locations
 import org.raisercostin.util.io.InputLocation
-import org.raisercostin.own.FileAttributesExtractor
+import org.raisercostin.own.raw
 case class Distance(meters: Double) {
   def toInternational =
     if (meters >= 1.0)
@@ -314,7 +314,7 @@ class RichExif extends AutoCloseable {
     //exif for avi in pair thm file?
     //exif metadata
     val location = Locations.file(file)
-    val fileAttributes= FileAttributesExtractor.extract(location) map(_.tags) getOrElse(Map())
+    val fileAttributes= raw.fileAttributesExtractor(location)
     val all = exifFomFile ++ (fileAttributes.mapValues(x=>formatted(x)_))
     //println(toSimpleMap(all) mkString "\n")
     //file system data

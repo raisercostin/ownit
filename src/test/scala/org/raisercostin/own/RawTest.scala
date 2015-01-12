@@ -8,6 +8,7 @@ import org.raisercostin.util.io.Locations
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.tz.DateTimeZoneBuilder
+import org.raisercostin.util.io.InputLocation
 
 @RunWith(classOf[JUnitRunner])
 class RawTest extends FunSuite with BeforeAndAfterAll {
@@ -34,8 +35,8 @@ class RawTest extends FunSuite with BeforeAndAfterAll {
       expectedDateTime.toString("yyyy:MM:dd HH:mm:ss"), exifValue)
   val local = DateTimeZone.forOffsetHours(2)
   
-  def extract(file:String,discoverPairs:Boolean = true):String = extract(file,ExternalExifExtractor(discoverPairs))
-  def extract(file:String,extractor:Extractor):String = extractor.extract(Locations.classpath(file)).map(_.tags("exifCreateDate")).getOrElse("")  
+  def extract(file:String,discoverPairs:Boolean = true):String = extract(file,raw.externalExifExtractor(discoverPairs))
+  def extract(file:String,extractor:InputLocation => Item):String = extractor(Locations.classpath(file)).tags("exifCreateDate")  
   //on G11
   //the dailight saving time modifies the creation date (you can detect this only by comparison with other files
   //mov use the utc time
@@ -44,12 +45,12 @@ class RawTest extends FunSuite with BeforeAndAfterAll {
     checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), extract("time1-IMG_2384.JPG"))
   }
   ignore("times1-sanselan") {
-    println(SanselanExifExtractor.extract(Locations.classpath("time1-IMG_2384.JPG"))map(_.tags.mkString("\n")))
-    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), extract("time1-IMG_2384.JPG",SanselanExifExtractor))
+    println(raw.sanselanExifExtractor(Locations.classpath("time1-IMG_2384.JPG")).mkString("\n"))
+    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), raw.sanselanExifExtractor(Locations.classpath("time1-IMG_2384.JPG"))("time1-IMG_2384.JPG"))
   }
   ignore("times1-fileAttribute") {
-    println(FileAttributesExtractor.extract(Locations.classpath("time1-IMG_2384.JPG"))map(_.tags.mkString("\n")))
-    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), extract("time1-IMG_2384.JPG",FileAttributesExtractor))
+    println(raw.fileAttributesExtractor(Locations.classpath("time1-IMG_2384.JPG")).mkString("\n"))
+    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), raw.fileAttributesExtractor(Locations.classpath("time1-IMG_2384.JPG"))("time1-IMG_2384.JPG"))
   }
   test("times2") {
     checkTime(new DateTime(2015, 1, 9, 0, 0, 42, local), extract("time2-MVI_2385.THM",false))
