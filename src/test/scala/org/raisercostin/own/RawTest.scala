@@ -11,7 +11,7 @@ import org.joda.time.tz.DateTimeZoneBuilder
 import org.raisercostin.util.io.InputLocation
 
 @RunWith(classOf[JUnitRunner])
-class RawTest extends FunSuite with BeforeAndAfterAll {
+class RawTest extends FunSuite with BeforeAndAfterAll with TryValues{
   import org.raisercostin.exif._
   import org.raisercostin.exif.RichExif._
   test("extract exif from one file") {
@@ -21,6 +21,25 @@ class RawTest extends FunSuite with BeforeAndAfterAll {
   test("extract exif from one pair too") {
     val tags = raw.externalExifExtractor(true)(Locations.classpath("MVI_2366.MOV")).tags
     assertEquals(214, tags.size)
+  }
+  test("test interpolator with invalid format") {
+    val int = raw.interpolator(Map("a"->new org.joda.time.DateTime(0).toString(raw.Convertor.exifDateTimeFormatter)))
+    import org.scalatest.Matchers._
+    int("$a(an'an':%Y-'luna':%m-'zi':%d 'ora':%H-'min':%M-'sec':%S)").failure.exception.getMessage() should include ("Couldn't format date")
+  }
+  test("test interpolator") {
+    val tags = raw.bestExifFullExtractor(true)(Locations.classpath("MVI_2366.MOV")).tags
+    val int = raw.interpolator(tags)
+    assertEquals("2015:01:06 11:44:08",tags("exifDateTimeOriginal"))
+    
+    assertEquals("2015-01-06--11-44-08",int("$exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)").get)
+    assertEquals("default",int("$test1|$test2|default").get)
+    assertEquals("prefixsuffix",int("$test1|$test2|(prefix%%suffix)").get)
+    assertEquals("",int("$test1|$test2|(prefix%%suffix|)").get)
+    assertEquals("prefixdefaultsuffix",int("$test1|$test2|default(prefix%%suffix)").get)
+    assertEquals("prefix2015:01:06 11:44:08suffix - an:2015-luna:01-zi:06 ora:11-min:44-sec:08",int("$test1|$test2|$exifDateTimeOriginal|(prefix%%suffix) - $exifDateTimeOriginal('an':%Y-'luna':%m-'zi':%d 'ora':%H-'min':%M-'sec':%S)").get)
+    assertEquals("2015-01-06--11-44-08---437-IMG_2366.THM",int("$exifE36867|$exifModifyDate|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%)-IMG_$exifFileNumberMinor(%%)$compClosestLocation|(--%%|)$compRemaining|(--%%|)$fileExtension(.%%)").get)
+    assertEquals("XXXX-XX-XX--XX-XX-XX---437-IMG_2366.THM",int("$exifE36867|$exifModifyDate2|$exifDateTimeOriginal2|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%)-IMG_$exifFileNumberMinor(%%)$compClosestLocation|(--%%|)$compRemaining|(--%%|)$fileExtension(.%%)").get)
   }
   test("best exif extractor") {
     val tags = raw.bestExifFullExtractor(true)(Locations.classpath("MVI_2366.MOV")).tags.toSeq.sortBy(_._1)

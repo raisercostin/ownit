@@ -123,42 +123,14 @@ class RichExif extends AutoCloseable {
   type MetadataMapType = Map[String, MetadataProvider]
   type MetadataMapType2 = Map[String, String]
   case class Tags(tags: MetadataMapType) {
+    val interpolator = raw.interpolator(toSimpleMap)
     def getInt(tag: String) = getString(tag).map(_.toInt)
     def getString(tag: String) = tags.get(tag).map(_("").get)
     def toSimpleMap: Map[String, String] =
       tags.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
     //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
-    def interpolate(pattern: String) = {
-      import scala.util.matching.Regex
-      var result = """\$\{([^}]+)\}""".r.replaceAllIn(pattern, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(name) => expand(name, tags.get(name), "").getOrElse("")
-      })
-      result = """\$((?:\w|\|)+)\(([^)]+)\)""".r("name", "expression").replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(name, exp) => expandMultiple(name, exp).getOrElse(exp)
-      })
-      result = """\$(\w+)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(name) => expand(name, tags.get(name), "").getOrElse("")
-      })
-      result
-    }
-    private def expandMultiple(name: String, format: String): Try[String] = {
-      val all = name.split("\\|")
-      //println(s"""search in ${all mkString "\n"}""")
-      name.split("\\|"). //filter{x=> vars.contains(x)}.
-        map(x => expand(x, tags.get(x), format)).find(_.isSuccess).headOption.getOrElse(Failure(new RuntimeException("Couldn't find format")))
-    }
+    def interpolate(pattern: String) = interpolator(pattern)
 
-    private def expand(name: String, data: Option[MetadataProvider], format: String): Try[String] = {
-      if (data.isEmpty) {
-        //println("Couldn't find " + name + " found +" + data)
-        Failure(new RuntimeException("Couldn't find " + name + " found +" + data))
-      } else {
-        val a = data.get.apply(format)
-        //println(s"For $name found $a")
-        //a.getOrElse(format)
-        a
-      }
-    }
     def extractFormat(file: File, constants: Seq[String]): String = {
       analyze(Locations.file(file).baseName, constants)
     }
@@ -257,17 +229,17 @@ class RichExif extends AutoCloseable {
 
   private def formatted(value: Any)(format: String): MetadataResult =
     //formatted2(value)(format).toOption
-    formatted2(value)(format)
+    raw.Convertor.formatted(value.toString)(format)
 
   val tagFileModificationDateTime = "fileModification"
   val tagFileCreated = "fileCreated"
   val tagFileExtension = "fileExtension"
   val tagCompRemaining = "compRemaining"
   val tagCompDetectedFormat = "compDetectedFormat"
-
-  val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss")
-  private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ")
-  private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
+//
+//  val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss")
+//  private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ")
+//  private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
 
   private def extractExifWithExifToolOld(prefix: String, file: File): Try[Tags] =
@@ -354,7 +326,7 @@ class RichExif extends AutoCloseable {
     result
   }
   type TransformValue = (Any) => String
-
+/*
   private def formatted2(value: Any)(format: String): Try[String] = {
     if (format.isEmpty)
       if (value == null)
@@ -398,7 +370,7 @@ class RichExif extends AutoCloseable {
         Try { new DateTime(date) }
     }
   }
-  
+  */
   private def replaceFirstLiterally(text: String, literal: String, replacement: String): String = {
     val arg1 = java.util.regex.Pattern.quote(literal)
     val arg2 = java.util.regex.Matcher.quoteReplacement(replacement)

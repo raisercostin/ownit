@@ -15,7 +15,7 @@ object Renamer {
   def main(args: Array[String]) = {
     //test
     //main2(args)
-    ownPics("""d:\personal\photos3""","""proposed1""")
+    ownPics("""d:\personal\work\conta\brainlight&pfa\440_0111\""","""proposed1""")
   }
   def main2(args: Array[String]) = {
     args match {
@@ -83,7 +83,7 @@ object Renamer {
             //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
             println("detected "+tags.tags.analyze(src.relativeTo(src.parent.parent)))
-            val newName = tags.tags.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumberMajor-IMG_$exifFileNumberMinor---$compClosestLocation--$compRemaining.$fileExtension").replaceAll("[-]+[.]", ".")
+            val newName = tags.tags.interpolate("$exifE36867|$exifModifyDate|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
             val ANSI_BACK = "" //"\u001B[1F";
 
             val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
