@@ -228,7 +228,6 @@ class RichExif extends AutoCloseable {
   }
 
   private def formatted(value: Any)(format: String): MetadataResult =
-    //formatted2(value)(format).toOption
     raw.Convertor.formatted(value.toString)(format)
 
   val tagFileModificationDateTime = "fileModification"
@@ -236,10 +235,6 @@ class RichExif extends AutoCloseable {
   val tagFileExtension = "fileExtension"
   val tagCompRemaining = "compRemaining"
   val tagCompDetectedFormat = "compDetectedFormat"
-//
-//  val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss")
-//  private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ")
-//  private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
 
   private def extractExifWithExifToolOld(prefix: String, file: File): Try[Tags] =
@@ -326,51 +321,6 @@ class RichExif extends AutoCloseable {
     result
   }
   type TransformValue = (Any) => String
-/*
-  private def formatted2(value: Any)(format: String): Try[String] = {
-    if (format.isEmpty)
-      if (value == null)
-        Success("")
-      else
-        Success(value.toString)
-    else {
-      //assume is date
-      extractDate(value).map { date =>
-        val format2 = fromIrfanViewToJodaDateTime(format)
-        //println(format2)
-        date.toString(format2.replaceAll("%", ""))
-      }
-      //date
-    }
-  }
-  private def fromIrfanViewToJodaDateTime(format: String) = {
-    //%Y-%m-%d--%H-%M-%S
-    var result = format
-    result = result.replaceAllLiterally("%Y", "yyyy")
-    result = result.replaceAllLiterally("%m", "MM")
-    result = result.replaceAllLiterally("%d", "dd")
-    result = result.replaceAllLiterally("%H", "HH")
-    result = result.replaceAllLiterally("%M", "mm")
-    result = result.replaceAllLiterally("%S", "ss")
-    result
-  }
-  private def extractDate(value: Any): Try[org.joda.time.DateTime] = {
-    import org.joda.time.DateTime
-    import org.joda.time.format.DateTimeFormat
-    import java.util.GregorianCalendar
-    import java.util.Date
-    value match {
-      case text: String =>
-        Try { DateTime.parse(text.trim, exifDateTimeFormatter) }.
-          orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter2) }).
-          orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter3) })
-      case date: Date =>
-        Try { new DateTime(date) }
-      case date: GregorianCalendar =>
-        Try { new DateTime(date) }
-    }
-  }
-  */
   private def replaceFirstLiterally(text: String, literal: String, replacement: String): String = {
     val arg1 = java.util.regex.Pattern.quote(literal)
     val arg2 = java.util.regex.Matcher.quoteReplacement(replacement)
