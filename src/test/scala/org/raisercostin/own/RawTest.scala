@@ -11,68 +11,6 @@ import org.joda.time.tz.DateTimeZoneBuilder
 import org.raisercostin.util.io.InputLocation
 
 @RunWith(classOf[JUnitRunner])
-class InterpolationTest extends FunSuite with BeforeAndAfterAll with TryValues {
-  test("test interpolator with invalid format") {
-    val int = raw.interpolator(Map("a" -> new org.joda.time.DateTime(0).toString(Formats.exifDateTimeFormatter)))
-    import org.scalatest.Matchers._
-    int("$a(an'an':%Y-'luna':%m-'zi':%d 'ora':%H-'min':%M-'sec':%S)").failure.exception.getMessage() should include("Couldn't format date")
-  }
-  test("test interpolator") {
-    val tags = Map(
-      "key1" -> new org.joda.time.DateTime(2015, 1, 6, 11, 44, 8, 0).toString(Formats.exifDateTimeFormatter),
-      "exifFileNumberMajor" -> "437",
-      "exifFileNumberMinor" -> "2366",
-      "fileExtension" -> "THM")
-    val int = raw.interpolator(tags)
-    assertEquals("2015:01:06 11:44:08", tags("key1"))
-
-    assertEquals("2015-01-06--11-44-08", int("$key1(%Y-%m-%d--%H-%M-%S)").get)
-    assertEquals("default", int("$test1|$test2|default").get)
-    assertEquals("prefixsuffix", int("$test1|$test2|(prefix%%suffix)").get)
-    assertEquals("", int("$test1|$test2|(prefix%%suffix|)").get)
-    assertEquals("prefixdefaultsuffix", int("$test1|$test2|default(prefix%%suffix)").get)
-    assertEquals("prefix2015:01:06 11:44:08suffix - an:2015-luna:01-zi:06 ora:11-min:44-sec:08", int("$test1|$test2|$key1|(prefix%%suffix) - $key1('an':%Y-'luna':%m-'zi':%d 'ora':%H-'min':%M-'sec':%S)").get)
-    assertEquals("2015-01-06--11-44-08---437-IMG_2366.THM", int("$exifE36867|$exifModifyDate|$key1|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%)-IMG_$exifFileNumberMinor(%%)$compClosestLocation|(--%%|)$compRemaining|(--%%|)$fileExtension(.%%)").get)
-    assertEquals("XXXX-XX-XX--XX-XX-XX---437-IMG_2366.THM", int("$exifE36867|$exifModifyDate2|$key12|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%)-IMG_$exifFileNumberMinor(%%)$compClosestLocation|(--%%|)$compRemaining|(--%%|)$fileExtension(.%%)").get)
-  }
-}
-
-@RunWith(classOf[JUnitRunner])
-class AnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues {
-  val tags2 = Map(
-    "exifDateTimeOriginal" -> new org.joda.time.DateTime(2015, 1, 6, 11, 44, 8, 0).toString(Formats.exifDateTimeFormatter),
-    "exifFileNumberMajor" -> "437",
-    "exifFileNumberMinor" -> "2366",
-    "fileExtension" -> "THM")
-  val analyse = raw.analyser(tags2)
-
-  test("analyse key with const") {
-    assertEquals("${const:IMG}_${exifFileNumberMinor}",analyse("IMG_2366").get)
-  }
-  test("analyse with formatter",Tag("failed")) {
-    assertEquals("$exifFileNumberMinor(IMG_%%)",analyse("IMG_2366").get)
-  }
-  test("test analyser") {
-    assertEquals("${exifFileNumberMajor}", analyse("437").get)
-    assertEquals("${exifFileNumberMinor}", analyse("2366").get)
-    assertEquals("${exifFileNumberMajor}/${const:IMG}_${exifFileNumberMinor}.thm", analyse("437/IMG_2366.thm").get)
-  }
-  test("analyze date format") {
-    assertEquals("${exifDateTimeOriginal+yyyy}${exifDateTimeOriginal+MM}${exifDateTimeOriginal+dd}_${exifDateTimeOriginal+HH}${exifDateTimeOriginal+mm}${exifDateTimeOriginal+ss}.jpg", analyse("20150106_114408.jpg").get)
-    assertEquals("${exifDateTimeOriginal+1s+yyyy}${exifDateTimeOriginal+1s+MM}${exifDateTimeOriginal+1s+dd}_${exifDateTimeOriginal+1s+HH}${exifDateTimeOriginal+1s+mm}${exifDateTimeOriginal+1s+ss}.jpg", analyse("20150106_114409.jpg").get)
-    assertEquals("${exifDateTimeOriginal+2s+yyyy}${exifDateTimeOriginal+2s+MM}${exifDateTimeOriginal+2s+dd}_${exifDateTimeOriginal+2s+HH}${exifDateTimeOriginal+2s+mm}${exifDateTimeOriginal+2s+ss}.jpg", analyse("20150106_114410.jpg").get)
-    assertEquals("${exifDateTimeOriginal+3s+yyyy}${exifDateTimeOriginal+3s+MM}${exifDateTimeOriginal+3s+dd}_${exifDateTimeOriginal+3s+HH}${exifDateTimeOriginal+3s+mm}${exifDateTimeOriginal+3s+ss}.jpg", analyse("20150106_114411.jpg").get)
-    assertEquals("20150106_114412.jpg", analyse("20150106_114412.jpg").get)
-  }
-  test("analyze consolidated date format",Tag("failed")) {
-    assertEquals("$exifDateTimeOriginal(yyyyMMdd_HHmmss).jpg", analyse("20150106_114408.jpg").get)
-  }
-  test("analyze format2") {
-    assertEquals("aaaa${exifFileNumberMajor}${exifFileNumberMinor}bbb", analyse("aaaa4372366bbb").get)
-  }
-}
-
-@RunWith(classOf[JUnitRunner])
 class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
   import org.raisercostin.exif._
   import org.raisercostin.exif.RichExif._
