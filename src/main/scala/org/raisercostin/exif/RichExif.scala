@@ -23,6 +23,9 @@ import scala.util.matching.Regex
 import org.raisercostin.util.io.Locations
 import org.raisercostin.util.io.InputLocation
 import org.raisercostin.own.raw
+import org.raisercostin.own.FormatAnalyser
+import org.raisercostin.own.Formats
+
 case class Distance(meters: Double) {
   def toInternational =
     if (meters >= 1.0)
@@ -136,7 +139,7 @@ class RichExif extends AutoCloseable {
   }
 
   private def formatted(value: Any)(format: String): MetadataResult =
-    raw.Convertor.formatted(value.toString)(format)
+    Formats.formatted(value.toString)(format)
 
   val tagFileCreated = "fileCreated"
   val tagFileExtension = "fileExtension"
@@ -200,31 +203,13 @@ class RichExif extends AutoCloseable {
 //    }
     val tags = Tags(result).extractFormat(file, constants2)
     result ++= Map(tagFileExtension -> formatted(location.extension)_,
-      tagCompRemaining -> formatted(cleanFormat(tags))_,
+      tagCompRemaining -> formatted(FormatAnalyser.cleanFormat(tags))_,
       tagCompDetectedFormat -> formatted(tags)_)
     Tags(TreeMap(result.toSeq: _*))
   }
   private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
     import scala.collection.JavaConversions._
-
     val valueMap = tool.getImageMeta(file, new ReadOptions().withNumericOutput(true)).map(x => prefix + x._1 -> formatted(x._2)_)
-    //println(valueMap mkString "\n")
     Map() ++ valueMap
   }
-
-  //  private def remainingFormat(file: File) = {
-  //    var format = extractFormat(file, RichExif.computeMetadata(file))
-  //  }
-  //  private def remainingFormat(file: File, metadata: MetadataMap) = {
-  //    var format = extractFormat(file, metadata)
-  //    cleanFormat(format)
-  //  }
-  private def cleanFormat(format: String) = {
-    //this assumes that usually after $ variable a separator might come
-    var result = format.replaceAll("""\$\{[^}]+\}[._-]?""", "")
-    result = result.replaceAll("^[._-]+", "")
-    result = result.replaceAll("[._-]+$", "")
-    result
-  }
-  type TransformValue = (Any) => String
 }

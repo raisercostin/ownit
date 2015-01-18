@@ -1,17 +1,24 @@
 package org.raisercostin.own
 
-object PatternAnalyser {
+object FormatAnalyser {
   val tagFileModificationDateTime = "fileModification"
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
+  def cleanFormat(format: String) = {
+    //this assumes that usually after $ variable a separator might come
+    var result = format.replaceAll("""\$\{[^}]+\}[._-]?""", "")
+    result = result.replaceAll("^[._-]+", "")
+    result = result.replaceAll("[._-]+$", "")
+    result
+  }
 }
-case class PatternAnalyser(tags: Map[String, String]) {
+case class FormatAnalyser(tags: Map[String, String]) {
   import scala.util.{ Try, Success, Failure }
 
-  def apply(pattern: String, constants: Seq[String] = Seq("IMG")): Try[String] = Success(analyze(pattern, constants))
-  import PatternAnalyser._
+  def apply(pattern: String, constants: Seq[String] = Seq("IMG")): Try[String] = Success(analyse(pattern, constants))
+  import FormatAnalyser._
   import org.joda.time._
 
-  def analyze(pattern: String, constants: Seq[String] = Seq("IMG")): String = {
+  def analyse(pattern: String, constants: Seq[String] = Seq("IMG")): String = {
     var result = pattern
     var message = List[String]()
 
@@ -33,14 +40,8 @@ case class PatternAnalyser(tags: Map[String, String]) {
       }
 
       def extractDateTime(tag: String):Try[DateTime] = 
-        //tags.get(tag).fold[Try[String]] { Failure(new RuntimeException("Not found")) } { (x => Success(x) /*_.apply(dateFormat)*/ ) }.map { (x => DateTime.parse(x, org.joda.time.format.DateTimeFormat.forPattern(dateFormat))) }
-        tags.get(tag).map(tag=>raw.Convertor.extractDate(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
+        tags.get(tag).map(tag=>Formats.extractDate(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
     val listDateKeys = Seq("exifDateTimeOriginal", "exifModifyDate", tagFileModificationDateTime, "exifE36867")
-    //$exifE36867|exifModifyDate|exifDateTimeOriginal
-    //implicit val metadata = extractExif(file)
-    //val date = extractAsDate(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
-    //println(computeMetadata(metadata).mkString("\n"))
-    //val date1 = metadata.get("E36867").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
     if (pattern.length >= "yyyyMMddHHmmss".length) {
       val dateFields = listDateKeys
       val list = listDateKeys.toStream.map(key => (key, extractDateTime(key))).flatMap {
@@ -66,6 +67,7 @@ case class PatternAnalyser(tags: Map[String, String]) {
     }
     result
   }
+
   private def extractDateFromString(text: String, date: DateTime, prefix2: String, suffix: String = "+"): String = {
     var result = text
     val prefix = "$$$$"
@@ -89,7 +91,7 @@ case class PatternAnalyser(tags: Map[String, String]) {
       case Some(value) =>
         //value("") match {
         //case Success(value) =>
-        replaceFirstLiterally(text, value, "$" + tag + "")
+        replaceFirstLiterally(text, value, "${" + tag + "}")
       //case Failure(e) =>
       //  throw e
       //}

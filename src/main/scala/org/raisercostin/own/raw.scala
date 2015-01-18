@@ -39,8 +39,8 @@ object raw {
     import org.joda.time.DateTime
     val fileAttributes = Map(
       tagFileExtension -> location.extension,
-      PatternAnalyser.tagFileModificationDateTime -> new DateTime(atts.lastModifiedTime.toString).toString(Convertor.exifDateTimeFormatter),
-      tagFileCreated -> new DateTime(atts.creationTime.toString).toString(Convertor.exifDateTimeFormatter))
+      FormatAnalyser.tagFileModificationDateTime -> new DateTime(atts.lastModifiedTime.toString).toString(Formats.exifDateTimeFormatter),
+      tagFileCreated -> new DateTime(atts.creationTime.toString).toString(Formats.exifDateTimeFormatter))
     fileAttributes
   }
 
@@ -112,143 +112,15 @@ object raw {
   }
 
   def externalExifExtractor(discoverPairs: Boolean = true): FullExtractor =
-    //location => simpleItemizer("")(location, (externalExifExtractor andThen allAnalyzers)(location)) 
     location => {
-      //val a = discoverAdditionalLocations(discoverPairs)(location).map{x=> allAnalyzers(RichExif.extractExifTags(x._2.toFile).toSimpleMap)}.reverse reduce ( _ ++ _ )
-      //simpleItemizer("")(location,a)
       CompositeItem("", raw.discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, allAnalyzers(org.raisercostin.exif.RichExif.extractExifTags(x._2.toFile).toSimpleMap))))
     }
-  //
-  //raw.bestExifFullExtractor(discoverPairs)
-  //  location => {
-  //    import org.raisercostin.exif.RichExif
-  //    location.map(x => simpleItemizer(x._1)(x._2, allAnalyzers(RichExif.extractExifTags(x._2.toFile).toSimpleMap))))
-  //  }
 
-  /**
-   * The formatting string has the syntax:
-   * selector(convertor)
-   * $key1|$key2|$key3|...|$keyN|defaultValue(convertor)
-   * - the selector
-   *     - contains one or multiple keys (prefixed with $) sepparated by | with an optional end default value
-   *     - defaultValue can be empty
-   *     - if defaultValue is missing and no key is found then an exception will be thrown
-   * - convertor
-   *     - is optional (and the default value is %%
-   *     - %% - will be replaced by the selected valueuse the value for selected key
-   *     - date specific fields %Y %m %d %H %M %S
-   *     - any other [a-z][A-Z] characters should be escaped between '
-   *     - TODO: time converter conventions: http://joda-time.sourceforge.net/apidocs/org/joda/time/format/DateTimeFormat.html
-   */
   def interpolator(tags: Map[String, String]): Interpolator = Interpolator(tags)
-  def analyser(tags: Map[String, String]): PatternAnalyser = PatternAnalyser(tags)
+  def analyser(tags: Map[String, String]): FormatAnalyser = FormatAnalyser(tags)
   //    Map(
   //      tagCompRemaining -> formatted(cleanFormat(tags))_,
   //      tagCompDetectedFormat -> formatted(tags)_)
-
-  case class Interpolator(tags: Map[String, String]) {
-    import Interpolator._
-    def apply(pattern: String): Try[String] = Try {
-      import scala.util.matching.Regex
-      var result = pattern
-      result = """(\$(?:(?:\w|[|$])+))\(([^)]+)\)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(selector, convertor) => expandMultiple(selector, Some(convertor)).get //OrElse(convertor)
-      })
-      result = """(\$(?:(?:\w|[|$])+))""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-        case Regex.Groups(selector) => expandMultiple(selector, None).get //OrElse("")
-      })
-      result
-    }
-    private def expandMultiple(selector: String, convertor: Option[String]): Try[String] = {
-      import scala.collection.JavaConversions._
-      import com.google.common.base.Splitter
-      val all: Iterable[String] = Splitter.on('|').trimResults().split(selector) //name.split("\\|")
-      val convertors: List[String] = Splitter.on('|').trimResults().split(convertor.getOrElse("")).toList //name.split("\\|")
-      println(s"expand[$all] with convertors[$convertors]")
-      all.toStream.flatMap(extractValue).headOption match {
-        case None => Failure(new RuntimeException(s"Couldn't find any value using [$selector]"))
-        case Some(value) =>
-          Convertor.convert(value, convertors.headOption, convertors.drop(1).headOption) //.find(_.isSuccess).headOption.getOrElse(Failure(new RuntimeException("Couldn't find format")))
-      }
-
-    }
-    private def extractValue(name: String): Option[String] =
-      if (name.startsWith("$")) tags.get(name.stripPrefix("$")) else Some(name)
-
-  }
-  object Convertor {
-    def convert(value: String, convertor: Option[String] = None, convertorNull: Option[String] = None): Try[String] =
-      if (value.isEmpty)
-        if (convertorNull.isEmpty)
-          if (convertor.isEmpty)
-            Success("")
-          else
-            formatted("")(convertor.get)
-        else
-          Success(convertorNull.get)
-      else if (convertor.isEmpty)
-        Success(value)
-      else
-        formatted(value)(convertor.get)
-
-    def formatted(value: String)(format: String): Try[String] =
-      if (format.isEmpty)
-        if (value == null)
-          Success("")
-        else
-          Success(value.toString)
-      else
-        simpleConverter.orElse(timeConverter)((format, value));
-
-    def simpleConverter: PartialFunction[(String, String), Try[String]] = {
-      case (format, value) if format.contains("%%") => Success(format.replaceAllLiterally("%%", value))
-    }
-    def timeConverter: PartialFunction[(String, String), Try[String]] = {
-      case (format, value) =>
-        //println(s"convert[$format][$value]")
-        //assume is date
-        extractDate(value).map { date =>
-          val format2 = fromIrfanViewToJodaDateTime(format)
-          date.toString(format2.replaceAll("%", ""))
-        } match {
-          case Success(s) => Success(s)
-          case Failure(ex) => Failure(new RuntimeException(s"Couldn't format date with [$format] " + ex.getMessage(), ex))
-        }
-    }
-
-    val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss")
-    private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ")
-    private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
-    def extractDate(value: Any): Try[org.joda.time.DateTime] = {
-      import org.joda.time.DateTime
-      import org.joda.time.format.DateTimeFormat
-      import java.util.GregorianCalendar
-      import java.util.Date
-      value match {
-        case text: String =>
-          Try { DateTime.parse(text.trim, exifDateTimeFormatter) }.
-            orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter2) }).
-            orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter3) })
-        case date: Date =>
-          Try { new DateTime(date) }
-        case date: GregorianCalendar =>
-          Try { new DateTime(date) }
-        case x =>
-          throw new IllegalArgumentException(s"Can't convert [$value] of type [${value.getClass}] to DateTime.")
-      }
-    }
-    private def fromIrfanViewToJodaDateTime(format: String) = {
-      //%Y-%m-%d--%H-%M-%S
-      var result = format
-      result = result.replaceAllLiterally("%Y", "yyyy")
-      result = result.replaceAllLiterally("%m", "MM")
-      result = result.replaceAllLiterally("%d", "dd")
-      result = result.replaceAllLiterally("%H", "HH")
-      result = result.replaceAllLiterally("%M", "mm")
-      result = result.replaceAllLiterally("%S", "ss")
-      result
-    }
-  }
 }
 
 object raw2 {
