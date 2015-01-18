@@ -39,7 +39,7 @@ object raw {
     import org.joda.time.DateTime
     val fileAttributes = Map(
       tagFileExtension -> location.extension,
-      Analyser.tagFileModificationDateTime -> new DateTime(atts.lastModifiedTime.toString).toString(Convertor.exifDateTimeFormatter),
+      PatternAnalyser.tagFileModificationDateTime -> new DateTime(atts.lastModifiedTime.toString).toString(Convertor.exifDateTimeFormatter),
       tagFileCreated -> new DateTime(atts.creationTime.toString).toString(Convertor.exifDateTimeFormatter))
     fileAttributes
   }
@@ -141,123 +141,11 @@ object raw {
    *     - TODO: time converter conventions: http://joda-time.sourceforge.net/apidocs/org/joda/time/format/DateTimeFormat.html
    */
   def interpolator(tags: Map[String, String]): Interpolator = Interpolator(tags)
-  def analyser(tags: Map[String, String]): Analyser = Analyser(tags)
+  def analyser(tags: Map[String, String]): PatternAnalyser = PatternAnalyser(tags)
   //    Map(
   //      tagCompRemaining -> formatted(cleanFormat(tags))_,
   //      tagCompDetectedFormat -> formatted(tags)_)
 
-  object Analyser {
-    val tagFileModificationDateTime = "fileModification"
-    private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
-  }
-  case class Analyser(tags: Map[String, String]) {
-    def apply(pattern: String, constants: Seq[String] = Seq("IMG")): Try[String] = Success(analyze(pattern, constants))
-    import Analyser._
-    import org.joda.time._
-
-    def analyze(value: String, constants: Seq[String] = Seq("IMG")): String = {
-      var result = value
-      var message = List[String]()
-
-        def check(date1: Try[DateTime], prefix: String): Boolean = {
-          if (date1.isSuccess) {
-            result = extractDateFromString(value, date1.get, prefix)
-            val mappings = countSubstring(result, prefix)
-            if (6 != mappings) {
-              //actual good prefix is this
-              message ::= s"$prefix = $date1 matched [$result] but have only [$mappings]. 6 are needed."
-              false
-            } else {
-              true
-            }
-          } else {
-            message ::= s"$prefix doesn't exist: " + date1.failed.get.getMessage
-            false
-          }
-        }
-
-        def extractDateTime(tag: String) = tags.get(tag).fold[Try[String]] { Failure(new RuntimeException("Not found")) } { (x=>Success(x) /*_.apply(dateFormat)*/) }.map { (x => DateTime.parse(x, org.joda.time.format.DateTimeFormat.forPattern(dateFormat))) }
-
-      //$exifE36867|exifModifyDate|exifDateTimeOriginal
-      //implicit val metadata = extractExif(file)
-      //val date = extractAsDate(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
-      //println(computeMetadata(metadata).mkString("\n"))
-      //val date1 = metadata.get("E36867").flatMap { _.apply(dateFormat) }.map { x => DateTime.parse(x, DateTimeFormat.forPattern(dateFormat)) }
-      if (value.length >= "yyyyMMddHHmmss".length) {
-        lazy val date1: Try[DateTime] = extractDateTime("exifDateTimeOriginal")
-        lazy val date3: Try[DateTime] = extractDateTime("exifModifyDate")
-        lazy val date2: Try[DateTime] = extractDateTime(tagFileModificationDateTime)
-        lazy val date4: Try[DateTime] = extractDateTime("exifE36867")
-        val stream = Stream(
-          Pair("exifDateTimeOriginal", date1), Pair("exifDateTimeOriginal+1s", date1.map(_.plusSeconds(1))),
-          Pair("exifDateTimeOriginal+2s", date1.map(_.plusSeconds(2))), Pair("exifDateTimeOriginal+3s", date1.map(_.plusSeconds(3))),
-          Pair("exifModifyDate", date3), Pair("exifModifyDate+1s", date3.map(_.plusSeconds(1))),
-          Pair("exifModifyDate+2s", date3.map(_.plusSeconds(2))), Pair("exifModifyDate+3s", date3.map(_.plusSeconds(3))),
-          Pair("exifE36867", date4), Pair("exifE36867+1s", date4.map(_.plusSeconds(1))), Pair("exifE36867+2s", date4.map(_.plusSeconds(2))),
-          Pair("exifE36867+3s", date4.map(_.plusSeconds(3))), Pair("tagFileModificationDateTime", date2),
-          Pair("tagFileModificationDateTime+1s", date2.map(_.plusSeconds(1))),
-          Pair("tagFileModificationDateTime+2s", date2.map(_.plusSeconds(2))),
-          Pair("tagFileModificationDateTime+3s", date2.map(_.plusSeconds(3))))
-        val a = stream.find(x => check(x._2, x._1))
-        //println("a=" + a)
-        if (a.isEmpty) {
-          //println(s"Couldn't find a pattern in [$value]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
-          result = value
-        }
-      } else {
-        //println(s"Couldn't find a date pattern in [$value] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
-      }
-      result = extractTagFromString(result, "exifFileNumber")
-      result = extractTagFromString(result, "exifFileNumberMajor")
-      result = extractTagFromString(result, "exifFileNumberMinor")
-      constants.foreach { constant =>
-        result = extractConstantFromString(result, constant)
-      }
-      result
-    }
-    private def extractDateFromString(text: String, date: DateTime, prefix2: String, suffix: String = "+"): String = {
-      var result = text
-      val prefix = "$$$$"
-      result = replaceFirstLiterally(result, date.toString("yyyy"), "${" + prefix + suffix + "yyyy}")
-      result = replaceFirstLiterally(result, date.toString("MM"), "${" + prefix + suffix + "MM}")
-      result = replaceFirstLiterally(result, date.toString("dd"), "${" + prefix + suffix + "dd}")
-      result = replaceFirstLiterally(result, date.toString("HH"), "${" + prefix + suffix + "HH}")
-      result = replaceFirstLiterally(result, date.toString("mm"), "${" + prefix + suffix + "mm}")
-      result = replaceFirstLiterally(result, date.toString("ss"), "${" + prefix + suffix + "ss}")
-      result = replaceAllLiterally(result, "${" + prefix, "${" + prefix2)
-      result
-    }
-    import java.util.regex.Pattern
-    private def countSubstring(str: String, substr: String) = Pattern.quote(substr).r.findAllMatchIn(str).length
-    private def extractConstantFromString(text: String, constant: String): String = {
-      replaceFirstLiterally(text, constant, "${const:" + constant + "}")
-    }
-
-    private def extractTagFromString(text: String, tag: String): String = {
-      tags.get(tag) match {
-        case Some(value) =>
-          //value("") match {
-            //case Success(value) =>
-              replaceFirstLiterally(text, value, "$" + tag + "")
-            //case Failure(e) =>
-            //  throw e
-          //}
-        case _ =>
-          text
-      }
-    }
-    private def replaceFirstLiterally(text: String, literal: String, replacement: String): String = {
-      val arg1 = java.util.regex.Pattern.quote(literal)
-      val arg2 = java.util.regex.Matcher.quoteReplacement(replacement)
-      text.replaceFirst(arg1, arg2)
-    }
-    private def replaceAllLiterally(text: String, literal: String, replacement: String): String = {
-      val arg1 = java.util.regex.Pattern.quote(literal)
-      val arg2 = java.util.regex.Matcher.quoteReplacement(replacement)
-      text.replaceAll(arg1, arg2)
-    }
-
-  }
   case class Interpolator(tags: Map[String, String]) {
     import Interpolator._
     def apply(pattern: String): Try[String] = Try {
@@ -331,7 +219,7 @@ object raw {
     val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss")
     private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ")
     private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
-    private def extractDate(value: Any): Try[org.joda.time.DateTime] = {
+    def extractDate(value: Any): Try[org.joda.time.DateTime] = {
       import org.joda.time.DateTime
       import org.joda.time.format.DateTimeFormat
       import java.util.GregorianCalendar
@@ -345,6 +233,8 @@ object raw {
           Try { new DateTime(date) }
         case date: GregorianCalendar =>
           Try { new DateTime(date) }
+        case x =>
+          throw new IllegalArgumentException(s"Can't convert [$value] of type [${value.getClass}] to DateTime.")
       }
     }
     private def fromIrfanViewToJodaDateTime(format: String) = {

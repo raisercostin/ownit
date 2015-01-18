@@ -130,7 +130,7 @@ class RichExif extends AutoCloseable {
       tags.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
     //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
     def interpolate(pattern: String) = interpolator(pattern)
-    def analyze(pattern: String) = analyser(pattern)
+    def analyze(pattern: String) = analyser(pattern).get
     def extractFormat(file: File, constants: Seq[String]): String = analyser(Locations.file(file).baseName, constants).get
     def withTag(value: Pair[String, Any]) = Tags(tags + (value._1 -> formatted(value._2)_))
   }
