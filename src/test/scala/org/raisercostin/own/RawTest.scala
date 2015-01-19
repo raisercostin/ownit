@@ -23,7 +23,7 @@ class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
     assertEquals(214, tags.size)
   }
   test("best exif extractor") {
-    val tags = raw.bestExifFullExtractor(true)(Locations.classpath("MVI_2366.MOV")).tags.toSeq.sortBy(_._1)
+    val tags = raw.loadExifTags(Locations.classpath("MVI_2366.MOV")).tags.tags.toSeq.sortBy(_._1)
     val tags2 = raw2.BestExifExtractor.extract(Locations.classpath("MVI_2366.MOV")).get.tags.toSeq.sortBy(_._1)
     //println(tags.mkString("\n"))
     //    assertEquals(214, tags2.size)
@@ -45,12 +45,12 @@ class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
     checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), extract("time1-IMG_2384.JPG"))
   }
   ignore("times1-sanselan") {
-    println(raw.sanselanExifExtractor(Locations.classpath("time1-IMG_2384.JPG")).mkString("\n"))
-    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), raw.sanselanExifExtractor(Locations.classpath("time1-IMG_2384.JPG"))("time1-IMG_2384.JPG"))
+    println(raw.extractor.sanselanExifExtractor(Locations.classpath("time1-IMG_2384.JPG")).mkString("\n"))
+    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), raw.extractor.sanselanExifExtractor(Locations.classpath("time1-IMG_2384.JPG"))("time1-IMG_2384.JPG"))
   }
   ignore("times1-fileAttribute") {
-    println(raw.fileAttributesExtractor(Locations.classpath("time1-IMG_2384.JPG")).mkString("\n"))
-    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), raw.fileAttributesExtractor(Locations.classpath("time1-IMG_2384.JPG"))("time1-IMG_2384.JPG"))
+    println(raw.extractor.fileAttributesExtractor(Locations.classpath("time1-IMG_2384.JPG")).mkString("\n"))
+    checkTime(new DateTime(2015, 1, 9, 0, 0, 36, local), raw.extractor.fileAttributesExtractor(Locations.classpath("time1-IMG_2384.JPG"))("time1-IMG_2384.JPG"))
   }
   test("times2") {
     checkTime(new DateTime(2015, 1, 9, 0, 0, 42, local), extract("time2-MVI_2385.THM", false))

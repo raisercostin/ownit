@@ -62,6 +62,7 @@ case class FormatAnalyser(tags: Map[String, String]) {
     result = extractTagFromString(result, "exifFileNumber")
     result = extractTagFromString(result, "exifFileNumberMajor")
     result = extractTagFromString(result, "exifFileNumberMinor")
+    result = extractTagFromString(result, "fileExtension")
     constants.foreach { constant =>
       result = extractConstantFromString(result, constant)
     }

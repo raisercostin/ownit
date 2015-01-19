@@ -25,6 +25,8 @@ import org.raisercostin.util.io.InputLocation
 import org.raisercostin.own.raw
 import org.raisercostin.own.FormatAnalyser
 import org.raisercostin.own.Formats
+import org.raisercostin.own.Tags
+import org.raisercostin.own.SimpleTags
 
 case class Distance(meters: Double) {
   def toInternational =
@@ -88,7 +90,14 @@ case class Gps(GPSLatitude: String, GPSLatitudeRef: String, GPSLongitude: String
   //Each degree of latitude is approximately 69 miles (111 kilometers) apart.
   def near(newLatitude: Double, delta: Double) = (latitude - newLatitude).abs * 111 <= delta
 }
-case class ExifTags(initialTags: RichExif.Tags) {
+object ExifTags{
+  /*
+   * To have in ExifTags all methods that are present on Tags and "delegate" to them. 
+   * http://jackcoughonsoftware.blogspot.ro/2008/11/using-scala-implicits-to-replace.html
+   */
+  implicit def delegateToTag(exifTags:ExifTags) = exifTags.tags
+}
+case class ExifTags(initialTags: Tags){
   var tags = initialTags
   def fileNumberMinor = tags.getInt("exifFileNumberMinor")
   def fileNumberMajor = tags.getInt("exifFileNumberMajor")
@@ -102,8 +111,19 @@ case class ExifTags(initialTags: RichExif.Tags) {
       //GPSAltitudeRef = tags.getString("exifGPSAltitudeRef").getOrElse("0"))
       )
   }
-  gps().flatMap { _.closestLocation.name }.map { name =>
-    tags = tags.withTag("compClosestLocation" -> name)
+  val compClosestLocation:Option[String] = gps().flatMap { _.closestLocation.name }
+  val compDetectedFormat:Try[String] = Try{tags.getString("exifFileName").get}.flatMap(tag=>tags.analyse(tag))
+  val compDetectedPathFormat:Try[String] = Try{tags.getString("exifDirectory").get}.flatMap(tag=>tags.analyse(tag))
+  val compRemaining:Try[String] = compDetectedFormat.map{format=>FormatAnalyser.cleanFormat(format)}
+
+  def newTags:Map[String,String] = Map("compClosestLocation"->compClosestLocation
+      ,"compDetectedFormat"->compDetectedFormat.toOption
+      ,"compDetectedPathFormat" -> compDetectedPathFormat.toOption
+      ,"compRemaining"->compRemaining.toOption
+      ).collect{case (key,Some(value)) => (key,value)}
+  
+  newTags.map{pair=>
+  	tags = tags.withTag(pair)
   }
 }
 object RichExif extends RichExif
@@ -123,19 +143,17 @@ class RichExif extends AutoCloseable {
   type MetadataResult = Try[String]
   type MetadataProvider = (String) => MetadataResult
   type MetadataMapType = Map[String, MetadataProvider]
-  type MetadataMapType2 = Map[String, String]
-  case class Tags(tags: MetadataMapType) {
-    val interpolator = raw.interpolator(toSimpleMap)
-    val analyser = raw.analyser(toSimpleMap)
-    def getInt(tag: String) = getString(tag).map(_.toInt)
-    def getString(tag: String) = tags.get(tag).map(_("").get)
-    lazy val toSimpleMap: Map[String, String] =
-      tags.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
+  case class Tags2(tags2: MetadataMapType) extends Tags {
+    def apply(tag: String): Option[String] = tags2.get(tag).map(_("").get)
+    val interpolator = raw.interpolator(tags)
+    val analyser = raw.analyser(tags)
+    lazy val tags: Map[String, String] =
+      tags2.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
     //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
     def interpolate(pattern: String) = interpolator(pattern)
-    def analyze(pattern: String) = analyser(pattern).get
+    def analyse(pattern: String) = analyser(pattern)
     def extractFormat(file: File, constants: Seq[String]): String = analyser(Locations.file(file).baseName, constants).get
-    def withTag(value: Pair[String, Any]) = Tags(tags + (value._1 -> formatted(value._2)_))
+    def withTag(value: Pair[String, Any]) = Tags2(tags2 + (value._1 -> formatted(value._2)_))
   }
 
   private def formatted(value: Any)(format: String): MetadataResult =
@@ -145,71 +163,23 @@ class RichExif extends AutoCloseable {
   val tagFileExtension = "fileExtension"
   val tagCompRemaining = "compRemaining"
   val tagCompDetectedFormat = "compDetectedFormat"
-
-  private def extractExifWithExifToolOld(prefix: String, file: File): Try[Tags] =
-    Try {
-
-        def split(text: String): Pair[String, String] = {
-          val all = text.splitAt(text.indexOf(":"))
-          Pair(all._1.trim.replaceAll("[/ ]", ""), all._2.drop(1).trim)
-        }
-      //println("Coulnd't get exif info from " + file)
-      import scala.sys.process._
-      import scala.sys.process.ProcessIO
-      val pb = Process(s"""exiftool "${file.getAbsolutePath}"""")
-      var map = Map[String, String]()
-      val pio = new ProcessIO(_ => (),
-        stdout => scala.io.Source.fromInputStream(stdout)
-          .getLines.foreach { x =>
-            //println(s"found $x")
-            map += split(x)
-          },
-        _ => ())
-      val a = pb.run(pio)
-      val blockTillExits = a.exitValue
-      if (blockTillExits == 0) {
-        //println(map)
-        //"exiftool".!
-        //println(map mkString "\n")
-        val result = map.toMap.map { x =>
-          //println(x)
-          (prefix + x._1, formatted(x._2)_)
-        }
-        Tags(result)
-      } else {
-        throw new RuntimeException(s"Coulnd't get exif info from " + file + ". Got $blockTillExits from exiftool.")
-      }
-    }
-//  def extractExifTagsInternalToJava(file: File, constants2: Seq[String] = Seq("IMG")): Tags = {
-//    SanselanOps.extractExifAsMap(file)
-//  }
+  //  def extractExifTagsInternalToJava(file: File, constants2: Seq[String] = Seq("IMG")): Tags = {
+  //    SanselanOps.extractExifAsMap(file)
+  //  }
   def extractExifTags(file: File, constants2: Seq[String] = Seq("IMG")): Tags = {
-    //exif metadata
     val exifPrefix = "exif"
-    val exifFomFile = Try{extractExifUsingBuzzMedia(exifPrefix, file)}.getOrElse(Map())
-    //exif for avi in pair thm file?
-    //exif metadata
+    val exifFomFile = Try { extractExifUsingBuzzMedia(exifPrefix, file) }.getOrElse(Map())
     val location = Locations.file(file)
-    val fileAttributes= raw.fileAttributesExtractor(location)
-    val all = exifFomFile ++ (fileAttributes.mapValues(x=>formatted(x)_))
-    //println(toSimpleMap(all) mkString "\n")
-    //file system data
+    val fileAttributes = raw.extractor.fileAttributesExtractor(location)
+    val all = exifFomFile ++ (fileAttributes.mapValues(x => formatted(x)_))
     var result = all
-//    all.get("exifFileNumber").map { exifFileNumber =>
-//      exifFileNumber("").get.toInt
-//    }.map { exifFileNumber =>
-//      result += "exifFileNumberMajor" -> formatted("%d".format(exifFileNumber / 10000))_
-//      result += "exifFileNumberMinor" -> formatted("%04d".format(exifFileNumber % 10000))_
-//    }
-    val tags = Tags(result).extractFormat(file, constants2)
+    val tags = Tags2(result).extractFormat(file, constants2)
     result ++= Map(tagFileExtension -> formatted(location.extension)_,
       tagCompRemaining -> formatted(FormatAnalyser.cleanFormat(tags))_,
       tagCompDetectedFormat -> formatted(tags)_)
-    Tags(TreeMap(result.toSeq: _*))
+    Tags2(TreeMap(result.toSeq: _*))
   }
   private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
-    import scala.collection.JavaConversions._
-    val valueMap = tool.getImageMeta(file, new ReadOptions().withNumericOutput(true)).map(x => prefix + x._1 -> formatted(x._2)_)
-    Map() ++ valueMap
+    raw.extractor.externalExifExtractor(Locations.file(file)).map(x => prefix + x._1 -> formatted(x._2)_)
   }
 }

@@ -39,7 +39,7 @@ object Renamer {
   }
   def dumpInfo(file: String) = {
     import org.raisercostin.exif.RichExif._
-    println(extractExifTags(Locations.file(file).toFile).toSimpleMap.mkString("\n"))
+    println(extractExifTags(Locations.file(file).toFile).tags.mkString("\n"))
   }
 
   import org.raisercostin.exif.RichExif
@@ -82,7 +82,7 @@ object Renamer {
             val tags = ExifTags(RichExif.extractExifTags(file,Seq("IMG")))
             //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-            println("detected "+tags.tags.analyze(src.relativeTo(src.parent.parent)))
+            println("detected "+tags.tags.analyse(src.relativeTo(src.parent.parent)))
             val newName = tags.tags.interpolate("$exifE36867|$exifModifyDate|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
             val ANSI_BACK = "" //"\u001B[1F";
 
@@ -94,7 +94,7 @@ object Renamer {
             val destFile = dest.child(src.relativeTo(from)).withName(_ => baseName).mkdirOnParentIfNecessary
             var newDestFile = destFile
             println(ANSI_BACK + "rename  " + file + " to " +
-              newName + "\t\tdetectedFormat:" + tags.tags.analyze(src.name)+"\t"+newDestFile)
+              newName + "\t\tdetectedFormat:" + tags.tags.analyse(src.name)+"\t"+newDestFile)
             var counter = 1
             while (newDestFile.exists) {
               newDestFile = destFile.withBaseName(baseName => baseName + "-" + counter)
