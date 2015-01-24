@@ -11,7 +11,7 @@ object FormatAnalyser {
     result
   }
 }
-case class FormatAnalyser(tags: Map[String, String]) {
+case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   import scala.util.{ Try, Success, Failure }
 
   def apply(pattern: String, constants: Seq[String] = Seq("IMG")): Try[String] = Success(analyse(pattern, constants))

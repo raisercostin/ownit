@@ -1,11 +1,11 @@
 package org.raisercostin.own
 
-import org.raisercostin.tags.Formats;
-import org.raisercostin.tags.raw;
+import org.raisercostin.tags.Formats
 import org.scalatest._
 import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
+import org.raisercostin.tags.FormatAnalyser
 
 @RunWith(classOf[JUnitRunner])
 class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues {
@@ -14,7 +14,7 @@ class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues 
     "exifFileNumberMajor" -> "437",
     "exifFileNumberMinor" -> "2366",
     "fileExtension" -> "THM")
-  val analyse = raw.analyser(tags2)
+  val analyse = FormatAnalyser(tags2)
 
   test("analyse key with const") {
     assertEquals("${const:IMG}_${exifFileNumberMinor}", analyse("IMG_2366").get)
