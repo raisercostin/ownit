@@ -22,17 +22,6 @@ object ExifCodes {
   def searchById(id: Int): Option[String] = None
   def searchByAlias(alias: String): Option[String] = None
 }
-case class Tags(tags: Map[String, String]) {
-  private lazy val interpolator = FormatInterpolator(tags)
-  private lazy val analyser = FormatAnalyser(tags)
-  def apply(tag: String): Option[String] = tags.get(tag)
-  def toSimpleMap: Map[String, String] = tags
-  def interpolate(pattern: String): Try[String] = interpolator(pattern)
-  def analyse(pattern: String): Try[String] = analyser(pattern)
-
-  def getInt(tag: String): Option[Int] = apply(tag).map(_.toInt)
-  def getString(tag: String) = apply(tag)
-}
 
 object raw {
   object extractor {
@@ -126,19 +115,19 @@ object raw {
   type Itemizer = (InputLocation, Map[String, String]) => Item
   type FullExtractor = InputLocation => Item
 
-  val externalExifFullExtractor: FullExtractor = location => simpleItemizer("")(location, extractor.bestExtractors(location))
+  private val externalExifFullExtractor: FullExtractor = location => simpleItemizer("")(location, extractor.bestExtractors(location))
 
-  def simpleItemizer(prefix: String): Itemizer = (location, tags) => SimpleItem(prefix, location, tags)
-  val bestExifExtractor: Boolean => InputLocation => Seq[Item] =
+  private def simpleItemizer(prefix: String): Itemizer = (location, tags) => SimpleItem(prefix, location, tags)
+  private val bestExifExtractor: Boolean => InputLocation => Seq[Item] =
     discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2)))
   val all: Boolean => InputLocation => Map[String, String] =
     discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).reverse.map(x => (x._1, x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2))).foldLeft(Map[String, String]())((x, y) => x ++
       //prefixKey(y._1)(y._3)
       y._3)
-  def bestExifFullExtractor: Boolean => InputLocation => Item =
+  private def bestExifFullExtractor: Boolean => InputLocation => Item =
     discoverPairs => location => CompositeItem("", bestExifExtractor(discoverPairs)(location))
 
-  def discoverAdditionalLocations(discoverPairs: Boolean): InputLocation => Seq[(String, InputLocation)] = location => {
+  private def discoverAdditionalLocations(discoverPairs: Boolean): InputLocation => Seq[(String, InputLocation)] = location => {
     val isMovie = Seq("avi", "mov").contains(location.extension.toLowerCase)
     val thm = if (discoverPairs && isMovie)
       Stream("thm2", "THM", "thm") flatMap { ext => location.withExtension(_ => ext).existingOption.map(x => (ext, x)) } headOption
