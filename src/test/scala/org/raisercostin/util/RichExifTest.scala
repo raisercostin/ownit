@@ -5,12 +5,13 @@ import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
 import org.raisercostin.util.io.Locations
 import org.raisercostin.own.raw
+import org.raisercostin.util.gps.Gps
 
 @RunWith(classOf[JUnitRunner])
 class RichExifTest extends FunSuite with BeforeAndAfterAll {
   import org.raisercostin.exif._
-  import org.raisercostin.exif.RichExif._
-  test("extract exif from one file") {
+  import org.raisercostin.own.RichExif._
+  ignore("extract exif from one file") {
     val file = Locations.classpath("20131008_175240.jpg")
     val result = raw.extractor.sanselanExifExtractor(file)
     val result2 = raw.loadExifTags(file).tags.tags
@@ -72,10 +73,11 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   }
   test("analyze duble files") {
     val file = Locations.classpath("MVI_2366.MOV")
-    println(raw.extractor.bestExtractors(file).mkString("\n"))
-    val analyser = raw.analyser(raw.all(true)(file))
+    val tags:ExifTags = raw.loadExifTags(file)
+    //println(raw.extractor.bestExtractors(file).mkString("\n"))
+    //val analyser = tags.raw.analyser(raw.all(true)(file))
     //val tags = extractExifTags(file.toFile)
-    val newName = analyser(file.name).get
+    val newName = tags.analyse(file.name).get
     assertEquals("MVI_${exifFileNumberMinor}.${fileExtension}", newName)
   }
   override def afterAll() {

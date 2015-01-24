@@ -10,6 +10,7 @@ import org.joda.time.DateTimeZone
 import org.apache.commons.io.filefilter.RegexFileFilter
 import org.raisercostin.util.io.Locations
 import org.raisercostin.exif.ExifTags
+import org.raisercostin.own.raw
 
 object Renamer {
   def main(args: Array[String]) = {
@@ -38,11 +39,9 @@ object Renamer {
     //ownPics("""z:\master\test""", """z:\master\test-proposed""")
   }
   def dumpInfo(file: String) = {
-    import org.raisercostin.exif.RichExif._
-    println(extractExifTags(Locations.file(file).toFile).tags.mkString("\n"))
+    println(raw.loadExifTags(Locations.file(file)).tags.tags.mkString("\n"))
   }
 
-  import org.raisercostin.exif.RichExif
   def ownPics(fromPath: String, toRelativeOrAbsolute: String, filter: Option[String] = None) = try {
     //main2(if(args.isEmpty) """d:\personal\photos\_desene\""" else args(0))
     //main2(""".\photo04.jpg""")
@@ -79,7 +78,7 @@ object Renamer {
           Try {
             //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
             //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
-            val tags = ExifTags(RichExif.extractExifTags(file,Seq("IMG")))
+            val tags = ExifTags(raw.loadExifTags(src))
             //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
             println("detected "+tags.tags.analyse(src.relativeTo(src.parent.parent)))
@@ -113,8 +112,6 @@ object Renamer {
     }.filter(_.isFailure).map {
       case Failure(f) => dump(f)
     }.mkString("\n"))
-  } finally {
-    RichExif.close
   }
 
   def fileWildcard(filter: String, file: String): Boolean = {

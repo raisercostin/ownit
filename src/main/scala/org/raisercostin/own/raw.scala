@@ -1,8 +1,8 @@
 package org.raisercostin.own
 
 import scala.util._
-
 import org.raisercostin.util.io.InputLocation
+import org.raisercostin.util.io.Locations
 trait Item {
   def prefix: String
   def tags: Map[String, String]
@@ -48,7 +48,6 @@ object raw {
     val fileAttributesExtractor: Extractor = location => {
       import java.nio.file._
       import java.nio.file.attribute._
-      import org.raisercostin.exif.RichExif
       import RichExif._
       val atts = Files.readAttributes(location.toPath, classOf[BasicFileAttributes], LinkOption.NOFOLLOW_LINKS)
       import org.joda.time.DateTime
@@ -114,16 +113,16 @@ object raw {
   type Itemizer = (InputLocation, Map[String, String]) => Item
   type FullExtractor = InputLocation => Item
 
-  //def all: (Itemizer*) => Itemizer = items =>CompositeItem("", items.map(x => SimpleItem(x._1, x._2, RichExif.extractExifTags(x._2.toFile).toSimpleMap)))
-  /* ++ prefixKey("exifSans")(sanselanExifExtractor(location))*/
-
   val externalExifFullExtractor: FullExtractor = location => simpleItemizer("")(location, extractor.bestExtractors(location))
 
   def simpleItemizer(prefix: String): Itemizer = (location, tags) => SimpleItem(prefix, location, tags)
   val bestExifExtractor: Boolean => InputLocation => Seq[Item] =
     discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2)))
   val all: Boolean => InputLocation => Map[String, String] =
-    discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => (x._1, x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2))).foldLeft(Map[String, String]())((x, y) => x ++ y._3)
+    discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => (x._1, x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2))).foldLeft(Map[String, String]())((x, y) => x ++ 
+        //prefixKey(y._1)(y._3)
+        y._3
+        )
   def bestExifFullExtractor: Boolean => InputLocation => Item =
     discoverPairs => location => CompositeItem("", bestExifExtractor(discoverPairs)(location))
 
@@ -139,7 +138,7 @@ object raw {
 
   def externalExifExtractor(discoverPairs: Boolean = true): FullExtractor =
     location => {
-      CompositeItem("", raw.discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, allAnalyzers(org.raisercostin.exif.RichExif.extractExifTags(x._2.toFile).tags))))
+      CompositeItem("", raw.discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, allAnalyzers(RichExif.extractExifTags(x._2.toFile).tags))))
     }
 
   def interpolator(tags: Map[String, String]): Interpolator = Interpolator(tags)
@@ -163,7 +162,6 @@ object raw2 {
   object BestExifExtractor extends DecorationExtractor(ExternalExifExtractor(true))
 
   case class ExternalExifExtractor(discoverPairs: Boolean = true) extends Extractor {
-    import org.raisercostin.exif.RichExif
     import com.thebuzzmedia.exiftool.RawExifTool
     import com.thebuzzmedia.exiftool.Feature
     import com.thebuzzmedia.exiftool.ReadOptions
@@ -196,7 +194,64 @@ object raw2 {
     }
   }
 }
-//}
+
+object RichExif extends RichExif
+class RichExif extends AutoCloseable {
+  import com.thebuzzmedia.exiftool._
+  import java.util.regex.Pattern
+  import scala.util.Failure
+  import java.io.File
+  import scala.util.Try
+  import scala.util.Success
+  import scala.collection.immutable.TreeMap
+  lazy val tool = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+  override def close = {
+    tool.shutdown()
+  }
+
+  type MetadataResult = Try[String]
+  type MetadataProvider = (String) => MetadataResult
+  type MetadataMapType = Map[String, MetadataProvider]
+  case class Tags2(tags2: MetadataMapType) extends Tags {
+    def apply(tag: String): Option[String] = tags2.get(tag).map(_("").get)
+    val interpolator = raw.interpolator(tags)
+    val analyser = raw.analyser(tags)
+    lazy val tags: Map[String, String] =
+      tags2.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
+    //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
+    def interpolate(pattern: String) = interpolator(pattern)
+    def analyse(pattern: String) = analyser(pattern)
+    def extractFormat(file: File, constants: Seq[String]): String = analyser(Locations.file(file).baseName, constants).get
+    def withTag(value: Pair[String, Any]) = Tags2(tags2 + (value._1 -> formatted(value._2)_))
+  }
+
+  private def formatted(value: Any)(format: String): MetadataResult =
+    Formats.formatted(value.toString)(format)
+
+  val tagFileCreated = "fileCreated"
+  val tagFileExtension = "fileExtension"
+  val tagCompRemaining = "compRemaining"
+  val tagCompDetectedFormat = "compDetectedFormat"
+  //  def extractExifTagsInternalToJava(file: File, constants2: Seq[String] = Seq("IMG")): Tags = {
+  //    SanselanOps.extractExifAsMap(file)
+  //  }
+  def extractExifTags(file: File, constants2: Seq[String] = Seq("IMG")): Tags = {
+    val exifPrefix = "exif"
+    val exifFomFile = Try { extractExifUsingBuzzMedia(exifPrefix, file) }.getOrElse(Map())
+    val location = Locations.file(file)
+    val fileAttributes = raw.extractor.fileAttributesExtractor(location)
+    val all = exifFomFile ++ (fileAttributes.mapValues(x => formatted(x)_))
+    var result = all
+    val tags = Tags2(result).extractFormat(file, constants2)
+    result ++= Map(tagFileExtension -> formatted(location.extension)_,
+      tagCompRemaining -> formatted(FormatAnalyser.cleanFormat(tags))_,
+      tagCompDetectedFormat -> formatted(tags)_)
+    Tags2(TreeMap(result.toSeq: _*))
+  }
+  private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
+    raw.extractor.externalExifExtractor(Locations.file(file)).map(x => prefix + x._1 -> formatted(x._2)_)
+  }
+}
 
   //  import org.apache.sanselan.common.{ IImageMetadata, RationalNumber }
   //  import org.apache.sanselan.formats.jpeg.JpegImageMetadata

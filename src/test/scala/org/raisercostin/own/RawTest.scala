@@ -12,8 +12,6 @@ import org.raisercostin.util.io.InputLocation
 
 @RunWith(classOf[JUnitRunner])
 class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
-  import org.raisercostin.exif._
-  import org.raisercostin.exif.RichExif._
   test("extract exif from one file") {
     val tags = raw.externalExifExtractor(false)(Locations.classpath("MVI_2366.MOV")).tags
     assertEquals(69, tags.size)
