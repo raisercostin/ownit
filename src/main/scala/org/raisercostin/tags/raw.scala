@@ -22,24 +22,17 @@ object ExifCodes {
   def searchById(id: Int): Option[String] = None
   def searchByAlias(alias: String): Option[String] = None
 }
-trait Tags {
-  def apply(tag: String): Option[String]
-  def tags: Map[String, String]
-  def withTag(value: Pair[String, Any]): Tags
-  def interpolate(pattern: String): Try[String]
-  def analyse(pattern: String): Try[String]
-
-  def getInt(tag: String): Option[Int] = apply(tag).map(_.toInt)
-  def getString(tag: String) = apply(tag)
-}
-case class SimpleTags(tags: Map[String, String]) extends Tags {
+case class Tags(tags: Map[String, String]) {
   lazy val interpolator = raw.interpolator(tags)
   lazy val analyser = raw.analyser(tags)
   def apply(tag: String): Option[String] = tags.get(tag)
   def toSimpleMap: Map[String, String] = tags
-  def withTag(value: Pair[String, Any]): Tags = new SimpleTags(tags + (value._1 -> value._2.asInstanceOf[String]))
+  //def withTag(value: Pair[String, Any]): Tags = new Tags(tags + (value._1 -> value._2.asInstanceOf[String]))
   def interpolate(pattern: String): Try[String] = interpolator(pattern)
   def analyse(pattern: String): Try[String] = analyser(pattern)
+
+  def getInt(tag: String): Option[Int] = apply(tag).map(_.toInt)
+  def getString(tag: String) = apply(tag)
 }
 
 object raw {
@@ -167,66 +160,7 @@ object raw {
   def loadExifTags(location: InputLocation): ExifTags = {
     //    val tags2 = extractExifTags(file)
     //    println(tags2.tags.mkString("\n"))
-    val tags = ExifTags(new SimpleTags(all(true)(location)))
+    val tags = ExifTags(new Tags(all(true)(location)))
     tags
   }
 }
-/*
-object RichExif extends RichExif
-class RichExif extends AutoCloseable {
-  import com.thebuzzmedia.exiftool._
-  import java.util.regex.Pattern
-  import scala.util.Failure
-  import java.io.File
-  import scala.util.Try
-  import scala.util.Success
-  import scala.collection.immutable.TreeMap
-  lazy val tool = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
-  override def close = {
-    tool.shutdown()
-  }
-
-  type MetadataResult = Try[String]
-  type MetadataProvider = (String) => MetadataResult
-  type MetadataMapType = Map[String, MetadataProvider]
-  case class Tags2(tags2: MetadataMapType) extends Tags {
-    def apply(tag: String): Option[String] = tags2.get(tag).map(_("").get)
-    val interpolator = raw.interpolator(tags)
-    val analyser = raw.analyser(tags)
-    lazy val tags: Map[String, String] =
-      tags2.mapValues(_("").getOrElse(null)).filter(x => x._2 != null).mapValues(_.toString)
-    //see http://dcsobral.blogspot.ro/2010/01/string-interpolation-in-scala-with.html
-    def interpolate(pattern: String) = interpolator(pattern)
-    def analyse(pattern: String) = analyser(pattern)
-    def extractFormat(file: File, constants: Seq[String]): String = analyser(Locations.file(file).baseName, constants).get
-    def withTag(value: Pair[String, Any]) = Tags2(tags2 + (value._1 -> formatted(value._2)_))
-  }
-
-  private def formatted(value: Any)(format: String): MetadataResult =
-    Formats.formatted(value.toString)(format)
-
-  val tagFileCreated = "fileCreated"
-  val tagFileExtension = "fileExtension"
-  val tagCompRemaining = "compRemaining"
-  val tagCompDetectedFormat = "compDetectedFormat"
-  //  def extractExifTagsInternalToJava(file: File, constants2: Seq[String] = Seq("IMG")): Tags = {
-  //    SanselanOps.extractExifAsMap(file)
-  //  }
-  def extractExifTags(file: File, constants2: Seq[String] = Seq("IMG")): Tags = {
-    val exifPrefix = "exif"
-    val exifFomFile = Try { extractExifUsingBuzzMedia(exifPrefix, file) }.getOrElse(Map())
-    val location = Locations.file(file)
-    val fileAttributes = raw.extractor.fileAttributesExtractor(location)
-    val all = exifFomFile ++ (fileAttributes.mapValues(x => formatted(x)_))
-    var result = all
-    val tags = Tags2(result).extractFormat(file, constants2)
-    result ++= Map(tagFileExtension -> formatted(location.extension)_,
-      tagCompRemaining -> formatted(FormatAnalyser.cleanFormat(tags))_,
-      tagCompDetectedFormat -> formatted(tags)_)
-    Tags2(TreeMap(result.toSeq: _*))
-  }
-  private def extractExifUsingBuzzMedia(prefix: String, file: File): MetadataMapType = {
-    raw.extractor.externalExifExtractor(Locations.file(file)).map(x => prefix + x._1 -> formatted(x._2)_)
-  }
-}
-*/
