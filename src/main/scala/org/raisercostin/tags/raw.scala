@@ -23,11 +23,10 @@ object ExifCodes {
   def searchByAlias(alias: String): Option[String] = None
 }
 case class Tags(tags: Map[String, String]) {
-  lazy val interpolator = raw.interpolator(tags)
-  lazy val analyser = raw.analyser(tags)
+  private lazy val interpolator = FormatInterpolator(tags)
+  private lazy val analyser = FormatAnalyser(tags)
   def apply(tag: String): Option[String] = tags.get(tag)
   def toSimpleMap: Map[String, String] = tags
-  //def withTag(value: Pair[String, Any]): Tags = new Tags(tags + (value._1 -> value._2.asInstanceOf[String]))
   def interpolate(pattern: String): Try[String] = interpolator(pattern)
   def analyse(pattern: String): Try[String] = analyser(pattern)
 
@@ -113,11 +112,12 @@ object raw {
 
   object analysers {
     type Analyzer = Map[String, String] => Map[String, String]
-    private val exifFileNumberAnalyzer: Analyzer = tags =>
-      tags.get("exifFileNumber").map(_.toInt).toSeq.flatMap { exifFileNumber =>
-        Seq("exifFileNumberMajor" -> "%d".format(exifFileNumber / 10000), "exifFileNumberMinor" -> "%04d".format(exifFileNumber % 10000))
-      }.toMap
-    val allAnalyzers: Analyzer = all(exifFileNumberAnalyzer, /*identity*/ x => x)
+    private val identityAnalyser: Analyzer = tags => tags
+//    private val exifFileNumberAnalyzer: Analyzer = tags =>
+//      tags.get("exifFileNumber").map(_.toInt).toSeq.flatMap { exifFileNumber =>
+//        Seq("exifFileNumberMajor" -> "%d".format(exifFileNumber / 10000), "exifFileNumberMinor" -> "%04d".format(exifFileNumber % 10000))
+//      }.toMap
+    val allAnalyzers: Analyzer = all(/*exifFileNumberAnalyzer, */identityAnalyser)
     private def all(analysers: Analyzer*): Analyzer = map => analysers.foldLeft(Map[String, String]())((sum, analyzer) => sum ++ analyzer(map))
     val prefixKey: String => Analyzer = prefix => tags => tags.map { case (key, value) => prefix + key -> value }
   }
@@ -147,20 +147,10 @@ object raw {
     val locations = thm ++: Seq(("", location))
     locations
   }
-  //
   //  def externalExifExtractor(discoverPairs: Boolean = true): FullExtractor =
   //    location => {
   //      CompositeItem("", raw.discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, allAnalyzers(RichExif.extractExifTags(x._2.toFile).tags))))
   //    }
-
-  def interpolator(tags: Map[String, String]): FormatInterpolator = FormatInterpolator(tags)
-  def analyser(tags: Map[String, String]): FormatAnalyser = FormatAnalyser(tags)
-
   import org.raisercostin.exif.ExifTags
-  def loadExifTags(location: InputLocation): ExifTags = {
-    //    val tags2 = extractExifTags(file)
-    //    println(tags2.tags.mkString("\n"))
-    val tags = ExifTags(new Tags(all(true)(location)))
-    tags
-  }
+  def loadExifTags(location: InputLocation): ExifTags = ExifTags(new Tags(all(true)(location)))
 }

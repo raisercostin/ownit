@@ -14,8 +14,6 @@ object ExifTags{
   implicit def delegateToTag(exifTags:ExifTags) = exifTags.tags
 }
 case class ExifTags(initialTags: Tags){
-  def fileNumberMinor = initialTags.getInt("exifFileNumberMinor")
-  def fileNumberMajor = initialTags.getInt("exifFileNumberMajor")
   def fileNumber = initialTags.getInt("exifFileNumber")
   def gpsLatitude = initialTags.getString("exifGPSLatitude")
   def gpsLongitude = initialTags.getString("exifGPSLongitude")
@@ -30,14 +28,24 @@ case class ExifTags(initialTags: Tags){
       )
   }
   val compClosestLocation:Option[String] = gps().flatMap { _.closestLocation.name }
-  val compDetectedFormat:Try[String] = Try{initialTags.getString("exifFileName").get}.flatMap(tag=>initialTags.analyse(tag))
-  val compDetectedPathFormat:Try[String] = Try{initialTags.getString("exifDirectory").get}.flatMap(tag=>initialTags.analyse(tag))
+  private val compFileNumberMajor:Try[String] = Try{fileNumber.get}.map(exifFileNumber=>"%d".format(exifFileNumber / 10000))
+  private val compFileNumberMinor:Try[String] = Try{fileNumber.get}.map(exifFileNumber=>"%04d".format(exifFileNumber % 10000))
+  def fileNumberMajor = compFileNumberMajor.map(_.toInt)
+  def fileNumberMinor = compFileNumberMinor.map(_.toInt)
+  val compDetectedFormat:Try[String] = Try{initialTags.getString("exifFileName").get}.flatMap(tag=>intermediateTags.analyse(tag))
+  val compDetectedPathFormat:Try[String] = Try{initialTags.getString("exifDirectory").get}.flatMap(tag=>intermediateTags.analyse(tag))
   val compRemaining:Try[String] = compDetectedFormat.map{format=>FormatAnalyser.cleanFormat(format)}
 
-  private def newTags:Map[String,String] = Map("compClosestLocation"->compClosestLocation
-      ,"compDetectedFormat"->compDetectedFormat.toOption
+  private def intermediateNewTags:Map[String,String] = Map(
+      "compClosestLocation"->compClosestLocation
+      ,"exifFileNumberMajor"->compFileNumberMajor.toOption
+      ,"exifFileNumberMinor"->compFileNumberMinor.toOption
+      ).collect{case (key,Some(value)) => (key,value)}
+  private def finalNewTags:Map[String,String] = Map(
+      "compDetectedFormat"->compDetectedFormat.toOption
       ,"compDetectedPathFormat" -> compDetectedPathFormat.toOption
       ,"compRemaining"->compRemaining.toOption
       ).collect{case (key,Some(value)) => (key,value)}
-  lazy val tags:Tags = initialTags.copy(tags=initialTags.tags ++ newTags)
+  private lazy val intermediateTags:Tags = initialTags.copy(tags=initialTags.tags ++ intermediateNewTags)
+  lazy val tags:Tags = intermediateTags.copy(tags=intermediateTags.tags ++ finalNewTags)
 }

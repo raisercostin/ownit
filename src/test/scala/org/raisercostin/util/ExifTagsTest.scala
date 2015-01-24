@@ -8,7 +8,7 @@ import org.raisercostin.util.io.Locations
 import org.raisercostin.util.gps.Gps
 
 @RunWith(classOf[JUnitRunner])
-class RichExifTest extends FunSuite with BeforeAndAfterAll {
+class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
   import org.raisercostin.exif._
   ignore("extract exif from one file") {
     val file = Locations.classpath("20131008_175240.jpg")
@@ -28,7 +28,9 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   test("analyze exifFileNumber") {
     val file = Locations.classpath("IMG_1558.JPG")
     val tags = raw.loadExifTags(file)
+    println(tags.tags.tags.mkString("\n"))
     assertEquals("${const:IMG}_${exifFileNumberMinor}.${fileExtension}", tags.analyse(file.name).get)
+    assertEquals("${const:IMG}_${exifFileNumberMinor}.${fileExtension}", tags.interpolate("$compDetectedFormat").get);
     assertEquals("", tags.interpolate("$compRemaining").get);
   }
   test("exif detected format") {
@@ -41,7 +43,6 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   test("analyze gps") {
     val file = Locations.classpath("20140206_135438_Rue Guimard.jpg")
     val tags:ExifTags = raw.loadExifTags(file)
-    //val tags = ExifTags(extractExifTags(file.toFile))
     //println(tags.tags.toSimpleMap.mkString("\n"))
     //println(tags.gps)
     //println(tags.gps.get.mapHref)
@@ -73,14 +74,8 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   test("analyze duble files") {
     val file = Locations.classpath("MVI_2366.MOV")
     val tags:ExifTags = raw.loadExifTags(file)
-    //println(raw.extractor.bestExtractors(file).mkString("\n"))
-    //val analyser = tags.raw.analyser(raw.all(true)(file))
-    //val tags = extractExifTags(file.toFile)
     val newName = tags.analyse(file.name).get
     assertEquals("MVI_${exifFileNumberMinor}.MOV", newName)
     //assertEquals("MVI_${exifFileNumberMinor}.${fileExtension}", newName)    
   }
-//  override def afterAll() {
-//    close()
-//  }
 }

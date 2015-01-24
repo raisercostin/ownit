@@ -20,7 +20,8 @@ class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
   }
   test("extract exif from one pair too") {
     val tags = raw.all(true)(Locations.classpath("MVI_2366.MOV"))
-    assertEquals(212, tags.size)
+    println(tags.mkString("\n"))
+    assertEquals(210, tags.size)
   }
   test("extractor that combines MOV and THM", Tag("failed"), Tag("feature")) {
     val tags = raw.loadExifTags(Locations.classpath("MVI_2366.MOV")).tags.tags.toSeq.sortBy(_._1)
