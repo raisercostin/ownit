@@ -1,4 +1,4 @@
-package org.raisercostin.own
+package org.raisercostin.tags
 object Formats {
   import scala.util.{ Try, Failure, Success }
   def convert(value: String, convertor: Option[String] = None, convertorNull: Option[String] = None): Try[String] =

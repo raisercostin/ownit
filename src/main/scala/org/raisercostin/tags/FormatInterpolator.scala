@@ -1,4 +1,4 @@
-package org.raisercostin.own
+package org.raisercostin.tags
 
 import scala.util.{ Try, Failure }
 /**
@@ -23,8 +23,8 @@ import scala.util.{ Try, Failure }
  *     - TODO: time converter conventions: http://joda-time.sourceforge.net/apidocs/org/joda/time/format/DateTimeFormat.html
  * </pre>
  */
-case class Interpolator(tags: Map[String, String]) {
-  import Interpolator._
+case class FormatInterpolator(tags: Map[String, String]) {
+  import FormatInterpolator._
   def apply(pattern: String): Try[String] = Try {
     import scala.util.matching.Regex
     var result = pattern

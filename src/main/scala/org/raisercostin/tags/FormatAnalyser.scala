@@ -1,4 +1,4 @@
-package org.raisercostin.own
+package org.raisercostin.tags
 
 object FormatAnalyser {
   val tagFileModificationDateTime = "fileModification"
@@ -15,6 +15,11 @@ case class FormatAnalyser(tags: Map[String, String]) {
   import scala.util.{ Try, Success, Failure }
 
   def apply(pattern: String, constants: Seq[String] = Seq("IMG")): Try[String] = Success(analyse(pattern, constants))
+  import org.raisercostin.tags.FormatAnalyser._
+  //actual good prefix is this
+  //println("a=" + a)
+  //println(s"Couldn't find a pattern in [$value]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
+  //println(s"Couldn't find a date pattern in [$value] is too short. Should have at least 14 characters to match something like yyyyMMddHHmmss.")
   import FormatAnalyser._
   import org.joda.time._
 
@@ -39,8 +44,8 @@ case class FormatAnalyser(tags: Map[String, String]) {
         }
       }
 
-      def extractDateTime(tag: String):Try[DateTime] = 
-        tags.get(tag).map(tag=>Formats.extractDate(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
+      def extractDateTime(tag: String): Try[DateTime] =
+        tags.get(tag).map(tag => Formats.extractDate(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
     val listDateKeys = Seq("exifDateTimeOriginal", "exifModifyDate", tagFileModificationDateTime, "exifE36867")
     if (pattern.length >= "yyyyMMddHHmmss".length) {
       val dateFields = listDateKeys

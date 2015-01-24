@@ -3,12 +3,14 @@ package org.raisercostin.exif
 import com.thebuzzmedia.exiftool.Feature
 import com.thenewmotion.time.Imports.DateTime
 import com.thenewmotion.time.Imports.DateTimeFormat
+
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.Date
 import java.util.GregorianCalendar
+
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
 import scala.collection.JavaConversions.asScalaBuffer
@@ -20,13 +22,14 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 import scala.util.matching.Regex
+
+import org.raisercostin.tags.FormatAnalyser;
 import org.raisercostin.util.io.Locations
 import org.raisercostin.util.io.InputLocation
-import org.raisercostin.own.raw
-import org.raisercostin.own.FormatAnalyser
-import org.raisercostin.own.Formats
-import org.raisercostin.own.Tags
-import org.raisercostin.own.SimpleTags
+import org.raisercostin.tags.raw
+import org.raisercostin.tags.Formats
+import org.raisercostin.tags.Tags
+import org.raisercostin.tags.SimpleTags
 import org.raisercostin.util.gps.Gps
 
 object ExifTags{
@@ -41,7 +44,7 @@ case class ExifTags(initialTags: Tags){
   def fileNumberMinor = tags.getInt("exifFileNumberMinor")
   def fileNumberMajor = tags.getInt("exifFileNumberMajor")
   def fileNumber = tags.getInt("exifFileNumber")
-  def gps() = tags.getString("exifGPSLatitude").map { x =>
+  def gps():Option[Gps] = tags.getString("exifGPSLatitude").map { x =>
     Gps(
       GPSLatitude = tags.getString("exifGPSLatitude").get,
       //GPSLatitudeRef = tags.getString("exifGPSLatitudeRef").getOrElse("N"),

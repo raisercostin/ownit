@@ -3,14 +3,13 @@ import org.scalatest._
 import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
+import org.raisercostin.tags.raw;
 import org.raisercostin.util.io.Locations
-import org.raisercostin.own.raw
 import org.raisercostin.util.gps.Gps
 
 @RunWith(classOf[JUnitRunner])
 class RichExifTest extends FunSuite with BeforeAndAfterAll {
   import org.raisercostin.exif._
-  import org.raisercostin.own.RichExif._
   ignore("extract exif from one file") {
     val file = Locations.classpath("20131008_175240.jpg")
     val result = raw.extractor.sanselanExifExtractor(file)
@@ -21,8 +20,8 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("interpolate tags") {
-    val file = Locations.classpath("20131008_175240.jpg").toFile
-    val tags = extractExifTags(file)
+    val file = Locations.classpath("20131008_175240.jpg")
+    val tags = raw.loadExifTags(file)
     val newName = tags.interpolate("$exifE36867|$exifModifyDate|$exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)$exifFileNumber|(---%%)$compRemaining(---%%).$fileExtension").get.replaceAll("[-]+[.]", ".")
     assertEquals("2013-10-08--17-52-39.jpg", newName)
   }
@@ -69,7 +68,7 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
     assertEquals("2014-02-06--13-54-38------Brussels--Rue Guimard.jpg", tags.interpolate("$exifE36867|$exifModifyDate|$exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber|(%%)---$compClosestLocation--$compRemaining.$fileExtension").get)
   }
   test("analyze file name containing spaces") {
-    extractExifTags(Locations.classpath("a b.jpg").toFile)
+    raw.loadExifTags(Locations.classpath("a b.jpg"))
   }
   test("analyze duble files") {
     val file = Locations.classpath("MVI_2366.MOV")
@@ -81,7 +80,7 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
     assertEquals("MVI_${exifFileNumberMinor}.MOV", newName)
     //assertEquals("MVI_${exifFileNumberMinor}.${fileExtension}", newName)    
   }
-  override def afterAll() {
-    close()
-  }
+//  override def afterAll() {
+//    close()
+//  }
 }

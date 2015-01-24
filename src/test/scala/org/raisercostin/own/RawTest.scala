@@ -4,21 +4,23 @@ import org.scalatest._
 import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
+import org.raisercostin.tags.raw
 import org.raisercostin.util.io.Locations
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.tz.DateTimeZoneBuilder
 import org.raisercostin.util.io.InputLocation
+import org.raisercostin.tags.Item
 
 @RunWith(classOf[JUnitRunner])
 class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
   test("extract exif from one file") {
-    val tags = raw.externalExifExtractor(false)(Locations.classpath("MVI_2366.MOV")).tags
-    assertEquals(69, tags.size)
+    val tags = raw.all(false)(Locations.classpath("MVI_2366.MOV"))
+    assertEquals(67, tags.size)
   }
   test("extract exif from one pair too") {
-    val tags = raw.externalExifExtractor(true)(Locations.classpath("MVI_2366.MOV")).tags
-    assertEquals(214, tags.size)
+    val tags = raw.all(true)(Locations.classpath("MVI_2366.MOV"))
+    assertEquals(212, tags.size)
   }
   test("extractor that combines MOV and THM", Tag("failed"), Tag("feature")) {
     val tags = raw.loadExifTags(Locations.classpath("MVI_2366.MOV")).tags.tags.toSeq.sortBy(_._1)
@@ -34,8 +36,7 @@ class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
       expectedDateTime.toString("yyyy:MM:dd HH:mm:ss"), exifValue)
   val local = DateTimeZone.forOffsetHours(2)
 
-  def extract(file: String, discoverPairs: Boolean = true): String = extract(file, raw.externalExifExtractor(discoverPairs))
-  def extract(file: String, extractor: InputLocation => Item): String = extractor(Locations.classpath(file)).tags("exifCreateDate")
+  def extract(file: String, discoverPairs: Boolean = true): String = raw.all(discoverPairs)(Locations.classpath(file)).get("exifCreateDate").get
   //on G11
   //the dailight saving time modifies the creation date (you can detect this only by comparison with other files
   //mov use the utc time

@@ -10,7 +10,7 @@ import org.joda.time.DateTimeZone
 import org.apache.commons.io.filefilter.RegexFileFilter
 import org.raisercostin.util.io.Locations
 import org.raisercostin.exif.ExifTags
-import org.raisercostin.own.raw
+import org.raisercostin.tags.raw
 
 object Renamer {
   def main(args: Array[String]) = {
