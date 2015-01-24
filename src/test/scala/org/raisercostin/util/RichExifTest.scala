@@ -78,7 +78,8 @@ class RichExifTest extends FunSuite with BeforeAndAfterAll {
     //val analyser = tags.raw.analyser(raw.all(true)(file))
     //val tags = extractExifTags(file.toFile)
     val newName = tags.analyse(file.name).get
-    assertEquals("MVI_${exifFileNumberMinor}.${fileExtension}", newName)
+    assertEquals("MVI_${exifFileNumberMinor}.MOV", newName)
+    //assertEquals("MVI_${exifFileNumberMinor}.${fileExtension}", newName)    
   }
   override def afterAll() {
     close()

@@ -119,7 +119,7 @@ object raw {
   val bestExifExtractor: Boolean => InputLocation => Seq[Item] =
     discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2)))
   val all: Boolean => InputLocation => Map[String, String] =
-    discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => (x._1, x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2))).foldLeft(Map[String, String]())((x, y) => x ++ 
+    discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).reverse.map(x => (x._1, x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2))).foldLeft(Map[String, String]())((x, y) => x ++ 
         //prefixKey(y._1)(y._3)
         y._3
         )
@@ -159,7 +159,7 @@ object raw2 {
     def extract(location: InputLocation): Option[Item]
   }
 
-  object BestExifExtractor extends DecorationExtractor(ExternalExifExtractor(true))
+  //object BestExifExtractor extends DecorationExtractor(ExternalExifExtractor(true))
 
   case class ExternalExifExtractor(discoverPairs: Boolean = true) extends Extractor {
     import com.thebuzzmedia.exiftool.RawExifTool
