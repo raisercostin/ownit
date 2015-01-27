@@ -1,6 +1,10 @@
 package org.raisercostin.tags
 
 import org.joda.time.LocalDateTime
+import org.joda.time.format.DateTimeFormatter
+import org.joda.time.format.DateTimeFormatterBuilder
+import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.DateTime
 object Formats {
   import scala.util.{ Try, Failure, Success }
   def convert(value: String, convertor: Option[String] = None, convertorNull: Option[String] = None): Try[String] =
@@ -44,8 +48,10 @@ object Formats {
 
   val exifDateTimeFormatterPattern = "yyyy:MM:dd HH:mm:ss"
   val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern(exifDateTimeFormatterPattern)
-  private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ").withOffsetParsed()
+  val exifDateTimeFormatterWithTimeZone = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ").withOffsetParsed()
   private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
+  private val exifDateTimeFormatter4ISO = ISODateTimeFormat.dateTime().withOffsetParsed()
+  def toStandard(value:DateTime) = value.toString(exifDateTimeFormatter4ISO)
   def extractDate(value: Any): Try[org.joda.time.DateTime] = {
     import org.joda.time.DateTime
     import org.joda.time.format.DateTimeFormat
@@ -54,7 +60,8 @@ object Formats {
     value match {
       case text: String =>
         Try { DateTime.parse(text.trim, exifDateTimeFormatter) }.
-          orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter2) }).
+          orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter4ISO)}).
+          orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatterWithTimeZone) }).
           orElse(Try { DateTime.parse(text.trim, exifDateTimeFormatter3) })
       case date: Date =>
         Try { new DateTime(date) }

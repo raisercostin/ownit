@@ -38,14 +38,14 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
   }
   test("exif detected format") {
     val file = Locations.classpath("IMG_1558.JPG")
-    val tags:ExifTags = raw.loadExifTags(file)
+    val tags: ExifTags = raw.loadExifTags(file)
     assertEquals(1558, tags.fileNumberMinor.get)
     assertEquals(401, tags.fileNumberMajor.get)
     assertEquals(4011558, tags.fileNumber.get)
   }
   test("analyze gps") {
     val file = Locations.classpath("20140206_135438_Rue Guimard.jpg")
-    val tags:ExifTags = raw.loadExifTags(file)
+    val tags: ExifTags = raw.loadExifTags(file)
     //println(tags.tags.toSimpleMap.mkString("\n"))
     //println(tags.gps)
     //println(tags.gps.get.mapHref)
@@ -64,25 +64,26 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
     assertEquals("Bucuresti", bucharest.closestLocation.name.get)
     assertEquals("Brussels", brussels.closestLocation.name.get)
   }
-  test("date time in utc using gps"){
-    val tags:ExifTags = raw.loadExifTags(Locations.classpath("20140206_135438_Rue Guimard.jpg"))
+  test("date time in utc using gps") {
+    val tags: ExifTags = raw.loadExifTags(Locations.classpath("20140206_135438_Rue Guimard.jpg"))
     println(tags.tags.tags.mkString("\n"))
     val a = tags.gpsDateTimeUTC.get
     assertEquals("2014-02-06T12:54:35.000Z", Formats.extractDate("2014:02:06 12:54:35Z").get.toString())
     assertEquals("2014-02-06T12:54:35.000+10:00", Formats.extractDate("2014:02:06 12:54:35+10").get.toString())
-    assertEquals(new DateTime(2014,2,6,12,54,35,0,DateTimeZone.forOffsetHours(10)), Formats.extractDate("2014:02:06 12:54:35+10").get)
+    assertEquals(new DateTime(2014, 2, 6, 12, 54, 35, 0, DateTimeZone.forOffsetHours(10)), Formats.extractDate("2014:02:06 12:54:35+10").get)
     assertEquals("2014-02-06T12:54:35.000Z", tags.gpsDateTimeUTC.get.toString())
     assertEquals("2014-02-06T13:54:38.000", tags.localDateTime.get.toString)
-    assertEquals(new LocalDateTime(2014,2,6,13,54,38,0), tags.localDateTime.get)
-    assertEquals(DateTimeZone.forOffsetHoursMinutes(1, 0),tags.dateTimeZone.get)
-    assertEquals("+01:00",tags.dateTimeZone.get.toString)
+    assertEquals(new LocalDateTime(2014, 2, 6, 13, 54, 38, 0), tags.localDateTime.get)
+    assertEquals(DateTimeZone.forOffsetHoursMinutes(1, 0), tags.dateTimeZone.get)
+    assertEquals("+01:00", tags.dateTimeZone.get.toString)
     //assertEquals("+01:00",tags.dateTimeZone.get.toTimeZone().getDisplayName())
     assertEquals("2014-02-06T13:54:38.000+01:00", tags.dateTime.get.toString())
     assertEquals("2014-02-06T13:54:35.000+01:00", tags.gpsDateTime.get.toString())
+    assertEquals("2014-02-06T13:54:38.000+01:00", tags.getDateTime("dateTime").get.toString())
   }
   test("analyze interpolate with gps") {
     val file = Locations.classpath("20140206_135438_Rue Guimard.jpg")
-    val tags:ExifTags = raw.loadExifTags(file)
+    val tags: ExifTags = raw.loadExifTags(file)
     assertEquals("2014-02-06--13-54-38------Brussels--Rue Guimard.jpg", tags.interpolate("$exifE36867|$exifModifyDate|$exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)---$exifFileNumber|(%%)---$compClosestLocation--$compRemaining.$fileExtension").get)
   }
   test("analyze file name containing spaces") {
@@ -90,8 +91,8 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
   }
   test("analyze duble files") {
     val file = Locations.classpath("MVI_2366.MOV")
-    val tags:ExifTags = raw.loadExifTags(file)
+    val tags: ExifTags = raw.loadExifTags(file)
     val newName = tags.analyse(file.name).get
-    assertEquals("${const:MVI}_${exifFileNumberMinor}.${fileExtension}", newName)    
+    assertEquals("${const:MVI}_${exifFileNumberMinor}.${fileExtension}", newName)
   }
 }

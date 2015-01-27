@@ -59,6 +59,7 @@ case class ExifTags(initialTags: Tags) {
   val compRemaining: Try[String] = compDetectedFormat.map { format => FormatAnalyser.cleanFormat(format) }
 
   private def intermediateNewTags: Map[String, String] = Map(
+    "dateTime" -> dateTime.map{Formats.toStandard},
     "compClosestLocation" -> compClosestLocation, "exifFileNumberMajor" -> compFileNumberMajor.toOption, "exifFileNumberMinor" -> compFileNumberMinor.toOption).collect { case (key, Some(value)) => (key, value) }
   private def finalNewTags: Map[String, String] = Map(
     "compDetectedFormat" -> compDetectedFormat.toOption, "compDetectedPathFormat" -> compDetectedPathFormat.toOption, "compRemaining" -> compRemaining.toOption).collect { case (key, Some(value)) => (key, value) }
