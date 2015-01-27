@@ -1,4 +1,6 @@
 package org.raisercostin.tags
+
+import org.joda.time.LocalDateTime
 object Formats {
   import scala.util.{ Try, Failure, Success }
   def convert(value: String, convertor: Option[String] = None, convertorNull: Option[String] = None): Try[String] =
@@ -40,8 +42,9 @@ object Formats {
       }
   }
 
-  val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss")
-  private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ")
+  val exifDateTimeFormatterPattern = "yyyy:MM:dd HH:mm:ss"
+  val exifDateTimeFormatter = org.joda.time.format.DateTimeFormat.forPattern(exifDateTimeFormatterPattern)
+  private val exifDateTimeFormatter2 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ").withOffsetParsed()
   private val exifDateTimeFormatter3 = org.joda.time.format.DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
   def extractDate(value: Any): Try[org.joda.time.DateTime] = {
     import org.joda.time.DateTime
@@ -61,6 +64,7 @@ object Formats {
         throw new IllegalArgumentException(s"Can't convert [$value] of type [${value.getClass}] to DateTime.")
     }
   }
+  def extractLocalDateTime(value:String): Try[LocalDateTime] = Try{LocalDateTime.parse(value,exifDateTimeFormatter.withOffsetParsed())}
   private def fromIrfanViewToJodaDateTime(format: String) = {
     //%Y-%m-%d--%H-%M-%S
     var result = format

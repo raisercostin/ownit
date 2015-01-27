@@ -28,10 +28,10 @@ case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal{
   def apply(pattern: String): Try[String] = Try {
     import scala.util.matching.Regex
     var result = pattern
-    result = """(\$(?:(?:\w|[|$])+))\(([^)]+)\)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
+    result = """(\$(?:(?:\w|[|$#])+))\(([^)]+)\)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
       case Regex.Groups(selector, convertor) => expandMultiple(selector, Some(convertor)).map(Regex.quoteReplacement).get //OrElse(convertor)
     })
-    result = """(\$(?:(?:\w|[|$])+))""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
+    result = """(\$(?:(?:\w|[|$#])+))""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
       case Regex.Groups(selector) => expandMultiple(selector, None).map(Regex.quoteReplacement).get //OrElse("")
     })
     result
@@ -41,7 +41,7 @@ case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal{
     import com.google.common.base.Splitter
     val all: Iterable[String] = Splitter.on('|').trimResults().split(selector)
     val convertors: List[String] = Splitter.on('|').trimResults().split(convertor.getOrElse("")).toList
-    println(s"expand[$all] with convertors[$convertors]")
+    //println(s"expand[$all] with convertors[$convertors]")
     all.toStream.flatMap(extractValue).headOption match {
       case None => Failure(new RuntimeException(s"Couldn't find any value using [$selector]"))
       case Some(value) =>

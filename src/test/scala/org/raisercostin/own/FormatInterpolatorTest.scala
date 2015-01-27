@@ -10,7 +10,7 @@ class FormatInterpolatorTest extends FunSuite with BeforeAndAfterAll with TryVal
   import org.junit.Assert._
   test("test interpolator with invalid format") {
     val int = FormatInterpolator(Map("a" -> new org.joda.time.DateTime(0).toString(Formats.exifDateTimeFormatter)))
-import org.scalatest.Matchers._
+    import org.scalatest.Matchers._
     int("$a(an'an':%Y-'luna':%m-'zi':%d 'ora':%H-'min':%M-'sec':%S)").failure.exception.getMessage() should include("Couldn't format date")
   }
   test("test interpolator") {
@@ -31,4 +31,9 @@ import org.scalatest.Matchers._
     assertEquals("2015-01-06--11-44-08---437-IMG_2366.THM", int("$exifE36867|$exifModifyDate|$key1|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%)-IMG_$exifFileNumberMinor(%%)$compClosestLocation|(--%%|)$compRemaining|(--%%|)$fileExtension(.%%)").get)
     assertEquals("XXXX-XX-XX--XX-XX-XX---437-IMG_2366.THM", int("$exifE36867|$exifModifyDate2|$key12|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%)-IMG_$exifFileNumberMinor(%%)$compClosestLocation|(--%%|)$compRemaining|(--%%|)$fileExtension(.%%)").get)
   }
+  test("test interpolator with key with special characters") {
+    val int = FormatInterpolator(Map("key1#test" -> "value1"))
+    assertEquals("value1", int("$key1#test").get)
+  }
 }
+  

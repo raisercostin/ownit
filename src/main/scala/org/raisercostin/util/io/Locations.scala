@@ -81,11 +81,7 @@ trait BaseLocation extends NavigableLocation {
     parent.mkdirIfNecessary
     this
   }
-  def pathInRaw: String = {
-    val a = raw.replaceAll("""^([^*]*)[*].*$""", "$1");
-    println(a);
-    a
-  }
+  def pathInRaw: String = raw.replaceAll("""^([^*]*)[*].*$""", "$1")
   def list: Iterator[InputLocation] = Option(existing).map(_.toFile.listFiles.toIterator).getOrElse(Iterator()).map(Locations.file(_))
   def traverse: Traversable[(Path, BasicFileAttributes)] = if (raw contains "*")
     Locations.file(pathInRaw).parent.traverse
@@ -174,7 +170,7 @@ trait OutputLocation extends BaseLocation {
       //println(s"ignore [${absolute}] to [${absolute}]")
     } else {
       val dest = parent.child(withExtension2(newName, extension))
-      println(s"move [${absolute}] to [${dest.absolute}]")
+      //println(s"move [${absolute}] to [${dest.absolute}]")
       FileUtils.moveFile(toFile, dest.toFile)
     }
   }
@@ -280,6 +276,7 @@ case class ClassPathInputLocation(initialResourcePath: String) extends InputLoca
     else
       initialResourcePath.substring(0, index)
   }
+  def asFile:FileLocation = Locations.file(toFile)
 }
 
 case class ZipInputLocation(zip: InputLocation, entry: Option[java.util.zip.ZipEntry]) extends InputLocation {

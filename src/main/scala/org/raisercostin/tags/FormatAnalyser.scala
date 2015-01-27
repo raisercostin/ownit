@@ -1,6 +1,7 @@
 package org.raisercostin.tags
 
 object FormatAnalyser {
+  val constants = Seq("IMG","MVI")
   val tagFileModificationDateTime = "fileModification"
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
   def cleanFormat(format: String) = {
@@ -14,7 +15,7 @@ object FormatAnalyser {
 case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   import scala.util.{ Try, Success, Failure }
 
-  def apply(pattern: String, constants: Seq[String] = Seq("IMG")): Try[String] = Success(analyse(pattern, constants))
+  def apply(pattern: String, constants: Seq[String] = constants): Try[String] = Success(analyse(pattern, constants))
   import org.raisercostin.tags.FormatAnalyser._
   //actual good prefix is this
   //println("a=" + a)
@@ -23,7 +24,7 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   import FormatAnalyser._
   import org.joda.time._
 
-  def analyse(pattern: String, constants: Seq[String] = Seq("IMG")): String = {
+  def analyse(pattern: String, constants: Seq[String] = constants): String = {
     var result = pattern
     var message = List[String]()
 

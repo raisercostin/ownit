@@ -11,12 +11,14 @@ import org.apache.commons.io.filefilter.RegexFileFilter
 import org.raisercostin.util.io.Locations
 import org.raisercostin.exif.ExifTags
 import org.raisercostin.tags.raw
+import org.raisercostin.util.io.FileLocation
 
 object Renamer {
   def main(args: Array[String]) = {
     //test
     //main2(args)
-    ownPics("""d:\personal\work\conta\brainlight&pfa\440_0111\""","""proposed1""")
+    //ownPics("""d:\personal\work\conta\brainlight&pfa\440_0111\""","""proposed1""")
+    ownPics("""d:\personal\photos-tofix\photos-others\""", """-proposed1""")
   }
   def main2(args: Array[String]) = {
     args match {
@@ -27,10 +29,11 @@ object Renamer {
       case _ =>
         println(s"""You must give two parameters and you gave ${args.toList.mkString("\n")}. \nThe folder (that will NEVER be changed) with your media(pics,movies) files and the folder where you want to get a proposal of new names based on EXIF information.""")
     }
+    println("done.")
   }
 
   def test = {
-    ownPics("""d:\photos-2014-12-18""","""d:\photos-2014-12-18-proposed1""")
+    //ownPics("""d:\personal\photos-tofix\photos-2014-12-18\""","""proposed1""")
     //ownPics("""d:\personal\photos""","""d:\personal\photos-proposed1""")
     //ownPics("""d:\personal\photos\2013-XX-XX\""","""d:\proposed2""")
     //ownPics(""".\test\special11""","""d:\proposed11""")
@@ -62,6 +65,8 @@ object Renamer {
     println("rename from " + from + " to " + to)
     val placeBadFiles = to.withName(_ + "-bad")
     val placeGoodFiles = to.withName(_ + "-good")
+    val toDevices = placeGoodFiles.child("devices.txt").withParent(_.mkdirIfNecessary).deleteIfExists
+    var allDevices = Set[String]()
     println(from.traverse.filter {
       case (file1, x) =>
         val file = file1.toFile
@@ -78,27 +83,33 @@ object Renamer {
           Try {
             //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
             //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
-            val tags = ExifTags(raw.loadExifTags(src))
+            val tags = raw.loadExifTags(src)
+            val device = tags.deviceId
+            if (!device.isDefined) {
+              println(tags.tags.tags.mkString("\n"))
+            }
+            if (device.isDefined && !allDevices.contains(device.get)) {
+              allDevices += device.get
+              toDevices.appendContent(device.get + "\n")
+            }
+
             //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-            println("detected "+tags.tags.analyse(src.relativeTo(src.parent.parent)))
-            val newName = tags.tags.interpolate("$exifE36867|$exifModifyDate|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
-            val ANSI_BACK = "" //"\u001B[1F";
+            val fileNameFormat = tags.analyse(src.name)
+            println("detected " + tags.analyse(src.relativeTo(src.parent.parent)))
+            val newName = tags.interpolate("$exifE36867|$exifModifyDate#THM|$exifModifyDate|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%S|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
 
             val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
-            val badChange = newName.contains("%H-%M-%S") && extensionsWithExif.contains(src.extension.toLowerCase)
-            val nameChanged = !newName.contains("%H-%M-%S")
+            val badChange = newName.contains("XXXX-XX-XX--XX-XX-XX") && extensionsWithExif.contains(src.extension.toLowerCase)
+            val nameChanged = !newName.contains("XXXX-XX-XX--XX-XX-XX")
             val dest = if (badChange) placeBadFiles else placeGoodFiles
             val baseName = if (nameChanged) newName else src.name
             val destFile = dest.child(src.relativeTo(from)).withName(_ => baseName).mkdirOnParentIfNecessary
-            var newDestFile = destFile
+            val newDestFile = findUniqueName(destFile)
+
+            val ANSI_BACK = "" //"\u001B[1F";
             println(ANSI_BACK + "rename  " + file + " to " +
-              newName + "\t\tdetectedFormat:" + tags.tags.analyse(src.name)+"\t"+newDestFile)
-            var counter = 1
-            while (newDestFile.exists) {
-              newDestFile = destFile.withBaseName(baseName => baseName + "-" + counter)
-              counter += 1
-            }
+              newName + "\t\tdetectedFormat:" + tags.tags.analyse(src.name) + "\t" + newDestFile)
             newDestFile.copyFromAsHardLink(src)
             newName
           }
@@ -112,6 +123,16 @@ object Renamer {
     }.filter(_.isFailure).map {
       case Failure(f) => dump(f)
     }.mkString("\n"))
+  }
+
+  def findUniqueName(destFile: FileLocation) = {
+    var newDestFile = destFile
+    var counter = 1
+    while (newDestFile.exists) {
+      newDestFile = destFile.withBaseName(baseName => baseName + "-" + counter)
+      counter += 1
+    }
+    newDestFile
   }
 
   def fileWildcard(filter: String, file: String): Boolean = {

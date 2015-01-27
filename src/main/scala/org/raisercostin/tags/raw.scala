@@ -1,9 +1,13 @@
 package org.raisercostin.tags
 
-import scala.util._
 import org.raisercostin.tags._
 import org.raisercostin.util.io.InputLocation
-import org.raisercostin.util.io.Locations
+import com.google.common.cache.CacheBuilder
+import com.google.common.cache.CacheLoader
+import com.thebuzzmedia.exiftool.adapters.ExifToolService
+import java.util.concurrent.TimeUnit
+import com.google.common.cache.RemovalListener
+import com.google.common.cache.RemovalNotification
 trait Item {
   def prefix: String
   def tags: Map[String, String]
@@ -45,13 +49,31 @@ object raw {
 
     import com.thebuzzmedia.exiftool.RawExifTool
     import com.thebuzzmedia.exiftool.Feature
-    private val tool = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+    //private val tool1helper = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+    //def tool1: ExifToolService = tool1helper
+    val tool2helper = CacheBuilder.newBuilder().weakValues()
+      .expireAfterWrite(20, TimeUnit.SECONDS)
+      .removalListener(new RemovalListener[String, ExifToolService]() {
+        def onRemoval(removal: RemovalNotification[String, ExifToolService]) = {
+          if(removal.getValue()!=null)
+        	  removal.getValue().close()
+        }
+      }).build(new CacheLoader[String, ExifToolService]() {
+        def load(key: String): ExifToolService = {
+          //println(s"create one more with key $key")
+          RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+        }
+      })
+    def tool2: ExifToolService = tool2helper.get("one")
+    def tool: ExifToolService = tool2
     val externalExifExtractor: Extractor = location => {
       import com.thebuzzmedia.exiftool.ReadOptions
 
       import scala.collection.JavaConversions._
       tool.getImageMeta(location.toFile, new ReadOptions().withNumericOutput(true)).toMap
     }
+    //https://github.com/drewnoakes/metadata-extractor
+    //val metadataExtractor: Extractor = ???
     val sanselanExifExtractor: Extractor = location => {
         def extractExif(loc: InputLocation) = {
 
@@ -96,19 +118,19 @@ object raw {
       }
       map
     }
-    val bestExtractors: Extractor = location => analysers.prefixKey("" /*file*/ )(fileAttributesExtractor(location)) ++ analysers.prefixKey("exif")(externalExifExtractor(location))
+    val bestExtractors: Extractor = location => analysers.transformKey(x => x /*file*/ )(fileAttributesExtractor(location)) ++ analysers.transformKey("exif" + _)(externalExifExtractor(location))
   }
 
   object analysers {
     type Analyzer = Map[String, String] => Map[String, String]
     private val identityAnalyser: Analyzer = tags => tags
-//    private val exifFileNumberAnalyzer: Analyzer = tags =>
-//      tags.get("exifFileNumber").map(_.toInt).toSeq.flatMap { exifFileNumber =>
-//        Seq("exifFileNumberMajor" -> "%d".format(exifFileNumber / 10000), "exifFileNumberMinor" -> "%04d".format(exifFileNumber % 10000))
-//      }.toMap
-    val allAnalyzers: Analyzer = all(/*exifFileNumberAnalyzer, */identityAnalyser)
+    //    private val exifFileNumberAnalyzer: Analyzer = tags =>
+    //      tags.get("exifFileNumber").map(_.toInt).toSeq.flatMap { exifFileNumber =>
+    //        Seq("exifFileNumberMajor" -> "%d".format(exifFileNumber / 10000), "exifFileNumberMinor" -> "%04d".format(exifFileNumber % 10000))
+    //      }.toMap
+    val allAnalyzers: Analyzer = all( /*exifFileNumberAnalyzer, */ identityAnalyser)
     private def all(analysers: Analyzer*): Analyzer = map => analysers.foldLeft(Map[String, String]())((sum, analyzer) => sum ++ analyzer(map))
-    val prefixKey: String => Analyzer = prefix => tags => tags.map { case (key, value) => prefix + key -> value }
+    val transformKey: (String => String) => Analyzer = transformer => tags => tags.map { case (key, value) => transformer(key) -> value }
   }
 
   import analysers._
@@ -120,10 +142,17 @@ object raw {
   private def simpleItemizer(prefix: String): Itemizer = (location, tags) => SimpleItem(prefix, location, tags)
   private val bestExifExtractor: Boolean => InputLocation => Seq[Item] =
     discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2)))
+
+  //when multiple maps have the same key, a suffix is added from the received source value otherwise the key is kept
   val all: Boolean => InputLocation => Map[String, String] =
-    discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).reverse.map(x => (x._1, x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2))).foldLeft(Map[String, String]())((x, y) => x ++
-      //prefixKey(y._1)(y._3)
-      y._3)
+    discoverPairs => location => {
+      val maps = discoverAdditionalLocations(discoverPairs)(location).reverse.map(x => (x._1, x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2)))
+      val original = maps.foldLeft(Map[String, String]())((x, y) => x ++
+        transformKey(keyTransformer(_, y._1))(y._3))
+      maps.foldLeft(Map[String, String]())((x, y) => x ++
+        transformKey(key=>if(!original.contains(key)) key else keyTransformer(key, y._1))(y._3))
+    }
+  def keyTransformer(key: String, source: String): String = if (source.isEmpty) key else key + "#" + source
   private def bestExifFullExtractor: Boolean => InputLocation => Item =
     discoverPairs => location => CompositeItem("", bestExifExtractor(discoverPairs)(location))
 
