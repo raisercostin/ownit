@@ -12,13 +12,14 @@ import org.raisercostin.util.io.Locations
 import org.raisercostin.exif.ExifTags
 import org.raisercostin.tags.raw
 import org.raisercostin.util.io.FileLocation
+import org.raisercostin.tags.FormatAnalyser._
 
 object Renamer {
   def main(args: Array[String]) = {
     //test
     //main2(args)
     //ownPics("""d:\personal\work\conta\brainlight&pfa\440_0111\""","""proposed1""")
-    ownPics("""d:\personal\photos-tofix\photos-others\""", """-proposed1""")
+    ownPics("""d:\personal\photos-tofix\photos-old-todelete\""", """-proposed1""")
   }
   def main2(args: Array[String]) = {
     args match {
@@ -97,7 +98,8 @@ object Renamer {
             //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
             val fileNameFormat = tags.analyse(src.name)
             println("detected " + tags.analyse(src.relativeTo(src.parent.parent)))
-            val newName = tags.interpolate("$dateTime|$exifE36867|$exifModifyDate#THM|$exifModifyDate|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%SZ|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+            //val newName = tags.interpolate("$dateTime|$exifE36867|$exifModifyDate#THM|$exifModifyDate|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%SZ|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+            val newName = tags.interpolate(dateAnalyser+"---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
 
             val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
             val badChange = newName.contains("XXXX-XX-XX--XX-XX-XX") && extensionsWithExif.contains(src.extension.toLowerCase)

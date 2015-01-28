@@ -1,7 +1,7 @@
 package org.raisercostin.tags
 
 object FormatAnalyser {
-  val constants = Seq("IMG","MVI")
+  val constants = Seq("IMG", "MVI")
   val tagFileModificationDateTime = "fileModification"
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
   def cleanFormat(format: String) = {
@@ -11,6 +11,7 @@ object FormatAnalyser {
     result = result.replaceAll("[._-]+$", "")
     result
   }
+    val dateAnalyser = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|(%Y-%m-%d--%H-%M-%S'+XXXX'|XXXX-XX-XX--XX-XX-XX+XXXX)"
 }
 case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   import scala.util.{ Try, Success, Failure }
@@ -28,7 +29,7 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
     var result = pattern
     var message = List[String]()
 
-      def check(date1: Try[DateTime], prefix: String): Boolean = {
+      def check(date1: Try[LocalDateTime], prefix: String): Boolean = {
         if (date1.isSuccess) {
           result = extractDateFromString(pattern, date1.get, prefix)
           val mappings = countSubstring(result, prefix)
@@ -44,13 +45,28 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
           false
         }
       }
+      def extractDateTime2(value: Any): Try[LocalDateTime] = Formats.extractDateTime(value).map { _.toLocalDateTime() }
+      def extractDateTime[U](format: Any => Try[U])(tag: String): Try[U] =
+        tags.get(tag).map(tag => format(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
+    //exifFileModifyDate could have timezone if not modified?
+	//d:\personal\work\ownit\src\test\resources>exiftool 2011-11-21--22-48-54+XXXX---XXX-IMG_XXXX---at-XXX--DSC_0547.JPG |grep Date
+    //Bad
+	//File Modification Date/Time     : 2011:11:21 23:48:56+02:00
+	//File Access Date/Time           : 2015:01:28 21:30:39+02:00
+	//File Creation Date/Time         : 2015:01:28 21:30:39+02:00
+	//Modify Date                     : 2011:11:21 22:48:54
+	//Modify Date                     : 2011:11:21 22:48:54.80
+    //Good:
+	//Date/Time Original              : 2011:11:19 03:00:20
+	//Create Date                     : 2011:11:19 03:00:20
+	//Create Date                     : 2011:11:19 03:00:20.80
+	//Date/Time Original              : 2011:11:19 03:00:20.80
 
-      def extractDateTime(tag: String): Try[DateTime] =
-        tags.get(tag).map(tag => Formats.extractDateTime(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
-    val listDateKeys = Seq("exifDateTimeOriginal", "exifModifyDate", tagFileModificationDateTime, "exifE36867")
+    val listDateKeys = Seq("dateTime", /*"exifFileModifyDate",*/ "localDateTime", "exifDateTimeOriginal", "exifCreateDate"/*, "exifModifyDate", tagFileModificationDateTime, "exifE36867"*/).map(x => (x, extractDateTime(extractDateTime2) _)) ++
+      Seq("localDateTime", "localDateTime", "exifDateTimeOriginal", "exifCreateDate","exifModifyDate").map(x => (x, extractDateTime(Formats.extractLocalDateTime) _))
     if (pattern.length >= "yyyyMMddHHmmss".length) {
       val dateFields = listDateKeys
-      val list = listDateKeys.toStream.map(key => (key, extractDateTime(key))).flatMap {
+      val list = listDateKeys.toStream.map(key => (key._1, key._2(key._1))).flatMap {
         case (key, date) =>
           Seq(
             Pair(key, date), Pair(key + "+1s", date.map(_.plusSeconds(1))), Pair(key + "+2s", date.map(_.plusSeconds(2))), Pair(key + "+3s", date.map(_.plusSeconds(3))))
@@ -75,7 +91,7 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
     result
   }
 
-  private def extractDateFromString(text: String, date: DateTime, prefix2: String, suffix: String = "+"): String = {
+  private def extractDateFromString(text: String, date: LocalDateTime, prefix2: String, suffix: String = "+"): String = {
     var result = text
     val prefix = "$$$$"
     result = replaceFirstLiterally(result, date.toString("yyyy"), "${" + prefix + suffix + "yyyy}")

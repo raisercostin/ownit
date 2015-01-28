@@ -29,6 +29,25 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
     val newName = tags.interpolate("$exifE36867|$exifModifyDate|$exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)$exifFileNumber|(---%%)$compRemaining(---%%).$fileExtension").get.replaceAll("[-]+[.]", ".")
     assertEquals("2013-10-08--17-52-39.jpg", newName)
   }
+
+  test("bug - use first datetimeoriginal") {
+    val file = Locations.classpath("DSC_0547.JPG")
+    val tags = raw.loadExifTags(file)
+    println(tags.tags.tags.mkString("\n"))
+    val newName = tags.interpolate("$exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)$exifFileNumber|(---%%)$compRemaining(---%%).$fileExtension").get.replaceAll("[-]+[.]", ".")
+    assertEquals("2011-11-19--03-00-20------+XXXX---XXX-XXXX---at-XXX--DSC_0547.JPG", newName)
+  }
+    
+  test("compute remaining") {
+    val file = Locations.classpath("20131008_175240.jpg")
+    val tags = raw.loadExifTags(file)
+    println(tags.tags.tags.mkString("\n"))
+    val expected="${exifModifyDate+1s+yyyy}${exifModifyDate+1s+MM}${exifModifyDate+1s+dd}_${exifModifyDate+1s+HH}${exifModifyDate+1s+mm}${exifModifyDate+1s+ss}.${fileExtension}"
+    assertEquals(expected, tags.analyse("20131008_175240.jpg").get)
+    assertEquals(expected, tags.compDetectedFormat.get)
+    assertEquals(expected, tags.getString("compDetectedFormat").get)
+    assertEquals("", tags.getString("compRemaining").get)
+  }
   test("analyze exifFileNumber") {
     val file = Locations.classpath("IMG_1558.JPG")
     val tags = raw.loadExifTags(file)
