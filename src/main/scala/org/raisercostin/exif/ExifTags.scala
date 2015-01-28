@@ -20,7 +20,7 @@ object ExifTags {
 }
 case class ExifTags(initialTags: Tags) {
   def deviceId: Option[String] = Some(initialTags.interpolate("exifModel:$exifModel|-exifCanonModelId:$exifCanonModelID|-exifProfileID:$exifProfileID|-exifDeviceModelDesc:$exifDeviceModelDesc|-exifDeviceModel:$exifDeviceModel|").get)
-  def localDateTime: Option[LocalDateTime] = initialTags.interpolate("$exifE36867|$exifModifyDate#THM|$exifModifyDate|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(" + Formats.exifDateTimeFormatterPattern + ")").toOption.flatMap(initialTags.asLocalDateTime)
+  def localDateTime: Option[LocalDateTime] = initialTags.interpolate("$exifE36867|$exifModifyDate#THM|$exifModifyDate|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(" + Formats.localDateTimeInternalExifFormatterPattern + ")").toOption.flatMap(initialTags.asLocalDateTime)
   def dateTimeZone: Option[DateTimeZone] = for(x<-localDateTime; y<-gpsDateTimeUTC) yield computeTimezone(x,y)
   def dateTime:Option[DateTime] = for(x<-localDateTime;y<-dateTimeZone) yield x.toDateTime(y)
   private def computeTimezone(local: LocalDateTime, timeUtc: DateTime):DateTimeZone = {
@@ -60,6 +60,7 @@ case class ExifTags(initialTags: Tags) {
 
   private def intermediateNewTags: Map[String, String] = Map(
     "dateTime" -> dateTime.map{Formats.toStandard},
+    "dateTimeZone" -> dateTimeZone.map{Formats.toStandard},
     "compClosestLocation" -> compClosestLocation, "exifFileNumberMajor" -> compFileNumberMajor.toOption, "exifFileNumberMinor" -> compFileNumberMinor.toOption).collect { case (key, Some(value)) => (key, value) }
   private def finalNewTags: Map[String, String] = Map(
     "compDetectedFormat" -> compDetectedFormat.toOption, "compDetectedPathFormat" -> compDetectedPathFormat.toOption, "compRemaining" -> compRemaining.toOption).collect { case (key, Some(value)) => (key, value) }

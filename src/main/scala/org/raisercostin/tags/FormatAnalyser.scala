@@ -46,7 +46,7 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
       }
 
       def extractDateTime(tag: String): Try[DateTime] =
-        tags.get(tag).map(tag => Formats.extractDate(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
+        tags.get(tag).map(tag => Formats.extractDateTime(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
     val listDateKeys = Seq("exifDateTimeOriginal", "exifModifyDate", tagFileModificationDateTime, "exifE36867")
     if (pattern.length >= "yyyyMMddHHmmss".length) {
       val dateFields = listDateKeys

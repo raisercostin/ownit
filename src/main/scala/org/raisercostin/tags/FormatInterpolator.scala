@@ -1,6 +1,7 @@
 package org.raisercostin.tags
 
 import scala.util.{ Try, Failure }
+import scala.util.Success
 /**
  * @see https://www.playframework.com/documentation/2.2.x/ScalaTemplates
  * The formatting string has the syntax:
@@ -23,13 +24,29 @@ import scala.util.{ Try, Failure }
  *     - TODO: time converter conventions: http://joda-time.sourceforge.net/apidocs/org/joda/time/format/DateTimeFormat.html
  * </pre>
  */
-case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal{
+//todo use idiomatic matching http://stackoverflow.com/questions/15640555/regex-pattern-matching-with-a-variable-number-of-matching-capturing-groups
+case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
   import FormatInterpolator._
   def apply(pattern: String): Try[String] = Try {
     import scala.util.matching.Regex
     var result = pattern
+    result = """((\$(?:(?:\w|[|$#])+))\(([^)]+)\)(?:[|](\$(?:(?:\w|[|$#])+))\(([^)]+)\))*)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
+      case all =>
+        //println(s"${all.subgroups.size}")
+        val pairs = all.subgroups.drop(1).filter(_ != null).grouped(2).toSeq
+        //println(s"aici=[${pairs.mkString("\n")}]"); ""
+        //expandMultiple(selector, Some(convertor)).map(Regex.quoteReplacement).get //OrElse(convertor)
+        val values: Stream[Try[String]] = pairs.toStream.map { case Seq(selector, format) => expandMultiple(selector, Some(format)).map(Regex.quoteReplacement) }
+        var cashed = Seq[Try[String]]()
+        val firstGood = values.filter { x => if (x.isFailure) cashed = cashed :+ x; x.isSuccess }
+        if (firstGood.isEmpty)
+          throw new RuntimeException(s"Can't interpolate format [$all]: $cashed")
+        firstGood.head.get
+      //println()
+      //""
+    })
     result = """(\$(?:(?:\w|[|$#])+))\(([^)]+)\)""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
-      case Regex.Groups(selector, convertor) => expandMultiple(selector, Some(convertor)).map(Regex.quoteReplacement).get //OrElse(convertor)
+      case Regex.Groups(selector, format) => expandMultiple(selector, Some(format)).map(Regex.quoteReplacement).get //OrElse(convertor)
     })
     result = """(\$(?:(?:\w|[|$#])+))""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
       case Regex.Groups(selector) => expandMultiple(selector, None).map(Regex.quoteReplacement).get //OrElse("")

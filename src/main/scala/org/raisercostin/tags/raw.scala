@@ -8,6 +8,7 @@ import com.thebuzzmedia.exiftool.adapters.ExifToolService
 import java.util.concurrent.TimeUnit
 import com.google.common.cache.RemovalListener
 import com.google.common.cache.RemovalNotification
+import org.joda.time.LocalDateTime
 trait Item {
   def prefix: String
   def tags: Map[String, String]
@@ -42,8 +43,8 @@ object raw {
       import org.joda.time.DateTime
       val fileAttributes = Map(
         tagFileExtension -> location.extension,
-        FormatAnalyser.tagFileModificationDateTime -> new DateTime(atts.lastModifiedTime.toString).toString(Formats.exifDateTimeFormatter),
-        tagFileCreated -> new DateTime(atts.creationTime.toString).toString(Formats.exifDateTimeFormatter))
+        FormatAnalyser.tagFileModificationDateTime -> new LocalDateTime(atts.lastModifiedTime.toMillis()).toString(Formats.localDateTimeInternalExifFormatter),
+        tagFileCreated -> new LocalDateTime(atts.creationTime.toMillis()).toString(Formats.localDateTimeInternalExifFormatter))
       fileAttributes
     }
 

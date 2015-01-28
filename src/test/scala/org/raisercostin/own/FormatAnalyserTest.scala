@@ -10,7 +10,7 @@ import org.raisercostin.tags.FormatAnalyser
 @RunWith(classOf[JUnitRunner])
 class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues {
   val tags2 = Map(
-    "exifDateTimeOriginal" -> new org.joda.time.DateTime(2015, 1, 6, 11, 44, 8, 0).toString(Formats.exifDateTimeFormatter),
+    "exifDateTimeOriginal" -> new org.joda.time.DateTime(2015, 1, 6, 11, 44, 8, 0).toString(Formats.dateTimeInternalExifFormatter),
     "exifFileNumberMajor" -> "437",
     "exifFileNumberMinor" -> "2366",
     "fileExtension" -> "THM")
