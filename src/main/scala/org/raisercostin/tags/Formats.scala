@@ -79,6 +79,7 @@ object Formats {
   def toStandard(value: LocalDateTime): String = value.toString(localDateTimeFormatterISO)
 
   val dateTimeInternalExifFormatter = DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ").withOffsetParsed()
+  val dateTimeInternalExifFormatter2 = DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss.SSSZ").withOffsetParsed()
   private val exifDateTimeFormatter3 = DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
   private val dateTimeIsoFormatter = ISODateTimeFormat.dateTime().withOffsetParsed()
   def toStandard(value: DateTime): String = value.toString(dateTimeIsoFormatter)
@@ -111,7 +112,7 @@ object Formats {
     import java.util.Date
     value match {
       case text: String =>
-        val formatters = Seq(dateTimeIsoFormatter, dateTimeInternalExifFormatter, exifDateTimeFormatter3)
+        val formatters = Seq(dateTimeIsoFormatter, dateTimeInternalExifFormatter2, dateTimeInternalExifFormatter, exifDateTimeFormatter3)
           def parse(value: DateTimeFormatter) = Try { DateTime.parse(text.trim, value) }
         parseInOrder("DateTime", formatters, parse, text.trim)
       case date: Date =>

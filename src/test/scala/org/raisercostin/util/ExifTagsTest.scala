@@ -35,7 +35,27 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
     val tags = raw.loadExifTags(file)
     println(tags.tags.tags.mkString("\n"))
     val newName = tags.interpolate("$exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)$exifFileNumber|(---%%)$compRemaining(---%%).$fileExtension").get.replaceAll("[-]+[.]", ".")
-    assertEquals("2011-11-19--03-00-20------+XXXX---XXX-XXXX---at-XXX--DSC_0547.JPG", newName)
+    assertEquals("2011-11-19--03-00-20------DSC_0547.JPG", newName)
+  }
+  test("bug - invalid timezone"){
+    val file = Locations.classpath("IMG_2057.JPG")
+    val tags = raw.loadExifTags(file)
+    println(tags.tags.tags.mkString("\n"))
+    assertEquals("+02:00",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T14:04:38"),new DateTime("2013-08-09T12:04:39Z")).toString)
+    assertEquals("+02:00",tags.dateTimeZone.get.toString())
+    assertEquals("2013-08-09--14-04-38+0200", tags.interpolate("$dateTime(%Y-%m-%d--%H-%M-%SZ)").get)
+  }
+  test("compute timezone"){
+    assertEquals("+02:00",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T14:04:38"),new DateTime("2013-08-09T12:04:39Z")).toString)
+    assertEquals("UTC",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:00:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("UTC",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:14:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("UTC",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:15:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+00:30",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:16:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+00:30",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:30:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+00:30",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:45:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+01:00",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:46:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+01:00",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T18:15:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+01:30",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T18:16:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
   }
     
   test("compute remaining") {

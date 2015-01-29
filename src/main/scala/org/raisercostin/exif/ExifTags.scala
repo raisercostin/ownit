@@ -17,23 +17,28 @@ object ExifTags {
    * http://jackcoughonsoftware.blogspot.ro/2008/11/using-scala-implicits-to-replace.html
    */
   implicit def delegateToTag(exifTags: ExifTags) = exifTags.tags
-}
-case class ExifTags(initialTags: Tags) {
-  def deviceId: Option[String] = Some(initialTags.interpolate("exifModel:$exifModel|-exifCanonModelId:$exifCanonModelID|-exifProfileID:$exifProfileID|-exifDeviceModelDesc:$exifDeviceModelDesc|-exifDeviceModel:$exifDeviceModel|").get)
-  def localDateTime: Option[LocalDateTime] = initialTags.interpolate("$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(" + Formats.localDateTimeInternalExifFormatterPattern + ")").toOption.flatMap(initialTags.asLocalDateTime)
-  def dateTimeZone: Option[DateTimeZone] = for(x<-localDateTime; y<-gpsDateTimeUTC) yield computeTimezone(x,y)
-  def dateTime:Option[DateTime] = for(x<-localDateTime;y<-dateTimeZone) yield x.toDateTime(y)
-  private def computeTimezone(local: LocalDateTime, timeUtc: DateTime):DateTimeZone = {
+  def computeTimezone(local: LocalDateTime, timeUtc: DateTime):DateTimeZone = {
     val duration = new Duration(timeUtc,local.toDateTime(DateTimeZone.UTC))
     val hours = Ints.checkedCast(duration.getStandardHours())
     if(hours>25) throw new RuntimeException(s"The difference between $local and $timeUtc is $hours which are more than 25.")
     val minutes = Ints.checkedCast(duration.getStandardMinutes()) - hours * 60
-    val minutesRounded = ((minutes + 15)/30)* 30 
+    val minutesRounded = ((minutes + 14)/30)* 30 //could be 0 : 30 : 60
+    if(minutesRounded<0 || minutesRounded>60 || minutesRounded%30!=0)
+      throw new IllegalStateException(s"Minutes rounded from $minutes should be 0, 30 or 60 and it was $minutesRounded.")
     //duration smaller than 25 hours
     //minutes rounded to 0 or 30
     //seconds are ignored
-    DateTimeZone.forOffsetHoursMinutes(hours,minutes)
+    val totalMinutes = hours*60+minutesRounded
+    DateTimeZone.forOffsetMillis(totalMinutes*60*1000)
+    //DateTimeZone.forOffsetHoursMinutes(hours,minutesRounded)
   }
+}
+case class ExifTags(initialTags: Tags) {
+  import ExifTags._
+  def deviceId: Option[String] = Some(initialTags.interpolate("exifModel:$exifModel|-exifCanonModelId:$exifCanonModelID|-exifProfileID:$exifProfileID|-exifDeviceModelDesc:$exifDeviceModelDesc|-exifDeviceModel:$exifDeviceModel|").get)
+  def localDateTime: Option[LocalDateTime] = initialTags.interpolate("$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(" + Formats.localDateTimeInternalExifFormatterPattern + ")").toOption.flatMap(initialTags.asLocalDateTime)
+  def dateTimeZone: Option[DateTimeZone] = for(x<-localDateTime; y<-gpsDateTimeUTC) yield computeTimezone(x,y)
+  def dateTime:Option[DateTime] = for(x<-localDateTime;y<-dateTimeZone) yield x.toDateTime(y)
   //exifFileModifyDate could have timezone if not modified?
   def fileExtension = initialTags.getString("fileExtension")
   def fileNumber = initialTags.getInt("exifFileNumber")
