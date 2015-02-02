@@ -17,6 +17,6 @@ case class Tags(tags: Map[String, String]) {
   def getInt(tag: String): Option[Int] = apply(tag).map(_.toInt)
   @deprecated("should return Option[Try[DateTime]] ?")
   def getDateTime(tag: String):Option[DateTime] = apply(tag).map(Formats.extractDateTime).map{_.get}
-  def asDateTime(value: String):Option[DateTime] = Formats.extractDateTime(value).toOption
-  def asLocalDateTime(value: String):Option[LocalDateTime] = Formats.extractLocalDateTime(value).toOption
+  def asDateTime(value: String):Try[DateTime] = Formats.extractDateTime(value)
+  def asLocalDateTime(value: String):Try[LocalDateTime] = Formats.extractLocalDateTime(value)
 }

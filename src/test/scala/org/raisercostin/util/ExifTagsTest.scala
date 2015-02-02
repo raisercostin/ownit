@@ -37,32 +37,32 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
     val newName = tags.interpolate("$exifDateTimeOriginal(%Y-%m-%d--%H-%M-%S)$exifFileNumber|(---%%)$compRemaining(---%%).$fileExtension").get.replaceAll("[-]+[.]", ".")
     assertEquals("2011-11-19--03-00-20------DSC_0547.JPG", newName)
   }
-  test("bug - invalid timezone"){
+  test("bug - invalid timezone") {
     val file = Locations.classpath("IMG_2057.JPG")
     val tags = raw.loadExifTags(file)
     println(tags.tags.tags.mkString("\n"))
-    assertEquals("+02:00",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T14:04:38"),new DateTime("2013-08-09T12:04:39Z")).toString)
-    assertEquals("+02:00",tags.dateTimeZone.get.toString())
+    assertEquals("+02:00", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T14:04:38"), new DateTime("2013-08-09T12:04:39Z")).toString)
+    assertEquals("+02:00", tags.dateTimeZone.get.toString())
     assertEquals("2013-08-09--14-04-38+0200", tags.interpolate("$dateTime(%Y-%m-%d--%H-%M-%SZ)").get)
   }
-  test("compute timezone"){
-    assertEquals("+02:00",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T14:04:38"),new DateTime("2013-08-09T12:04:39Z")).toString)
-    assertEquals("UTC",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:00:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
-    assertEquals("UTC",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:14:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
-    assertEquals("UTC",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:15:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
-    assertEquals("+00:30",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:16:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
-    assertEquals("+00:30",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:30:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
-    assertEquals("+00:30",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:45:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
-    assertEquals("+01:00",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:46:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
-    assertEquals("+01:00",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T18:15:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
-    assertEquals("+01:30",ExifTags.computeTimezone(new LocalDateTime("2013-08-09T18:16:00"),new DateTime("2013-08-09T17:00:00Z")).toString)
+  test("compute timezone") {
+    assertEquals("+02:00", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T14:04:38"), new DateTime("2013-08-09T12:04:39Z")).toString)
+    assertEquals("UTC", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:00:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("UTC", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:14:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("UTC", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:15:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+00:30", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:16:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+00:30", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:30:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+00:30", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:45:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+01:00", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T17:46:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+01:00", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T18:15:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
+    assertEquals("+01:30", ExifTags.computeTimezone(new LocalDateTime("2013-08-09T18:16:00"), new DateTime("2013-08-09T17:00:00Z")).toString)
   }
-    
+
   test("compute remaining") {
     val file = Locations.classpath("20131008_175240.jpg")
     val tags = raw.loadExifTags(file)
     println(tags.tags.tags.mkString("\n"))
-    val expected="${exifModifyDate+1s+yyyy}${exifModifyDate+1s+MM}${exifModifyDate+1s+dd}_${exifModifyDate+1s+HH}${exifModifyDate+1s+mm}${exifModifyDate+1s+ss}.${fileExtension}"
+    val expected = "${exifModifyDate+1s+yyyy}${exifModifyDate+1s+MM}${exifModifyDate+1s+dd}_${exifModifyDate+1s+HH}${exifModifyDate+1s+mm}${exifModifyDate+1s+ss}.${fileExtension}"
     assertEquals(expected, tags.analyse("20131008_175240.jpg").get)
     assertEquals(expected, tags.compDetectedFormat.get)
     assertEquals(expected, tags.getString("compDetectedFormat").get)
@@ -133,9 +133,22 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
     val newName = tags.analyse(file.name).get
     assertEquals("${const:MVI}_${exifFileNumberMinor}.${fileExtension}", newName)
   }
-  test("feature-extract file modification as fallback"){
+  test("feature-extract file modification as fallback") {
     val tags: ExifTags = raw.loadExifTags(Locations.classpath("foursquare_photo_tmp.jpg"))
-     println(tags.tags.tags.mkString("\n"))
-   assertEquals("2013-08-21T18:03:56.000",tags.localDateTime.get.toString())
+    assertEquals("2013-08-21T18:03:56.000", tags.localDateTime.get.toString())
+  }
+  test("analyze utc DateTime") {
+    val tags: ExifTags = raw.loadExifTags(Locations.classpath("time6-MVI_2389.MOV"))
+    assertEquals("2015-01-08--22-02-46", tags.initialTags.interpolate("$exifGPSDateTime|$exifTrackCreateDate|$exifMediaCreateDate(%Y-%m-%d--%H-%M-%SZ)").get)
+    assertEquals("2015-01-08T22:02:46.000Z", tags.dateTimeUTC.get.toString())
+    assertEquals("+02:00", tags.dateTimeZone.get.toString())
+    assertEquals("2015-01-09T00:02:46.000+02:00", tags.dateTime.get.toString())
+  }
+  test("use localDateTime from filename") {
+    val tags: ExifTags = raw.loadExifTags(Locations.classpath("aaa-20140722_200427.mov"))
+    println(tags.tags.tags.mkString("\n"))
+    assertEquals("2014:07:22 20:04:27", tags("pathLocalDateTime").get.toString())
+    assertEquals("+03:00", tags.dateTimeZone.get.toString())
+    assertEquals("2014-07-22T20:04:27.000+03:00", tags.dateTime.get.toString())
   }
 }

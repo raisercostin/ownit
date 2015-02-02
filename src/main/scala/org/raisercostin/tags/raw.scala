@@ -9,6 +9,9 @@ import java.util.concurrent.TimeUnit
 import com.google.common.cache.RemovalListener
 import com.google.common.cache.RemovalNotification
 import org.joda.time.LocalDateTime
+import org.joda.time.format.DateTimeFormatter
+import org.joda.time.format.DateTimeFormat
+import scala.util.Try
 trait Item {
   def prefix: String
   def tags: Map[String, String]
@@ -35,7 +38,6 @@ object raw {
     val tagFileCreated = "fileCreated"
 
     val fileAttributesExtractor: Extractor = location => {
-
       import java.nio.file._
       import java.nio.file.attribute._
       val atts = Files.readAttributes(location.toPath, classOf[BasicFileAttributes], LinkOption.NOFOLLOW_LINKS)
@@ -48,6 +50,18 @@ object raw {
       fileAttributes
     }
 
+    val pathExtractor: Extractor = location => {
+      val path = location.name
+      val formats = """(\d{4})(\d{2})(\d{2}).*(\d{2})(\d{2})(\d{2})""".r.unanchored
+      val localDateTime = path match {
+        case formats(year, month, day, hour, minute, second) =>
+          implicit def a2i(a: String) = a.toInt
+          Some(new LocalDateTime(year, month, day, hour, minute, second))
+        case _ => None
+      }
+      localDateTime.map{x=> Map("LocalDateTime"->x.toString(Formats.localDateTimeInternalExifFormatter))}.getOrElse(Map())
+    }
+
     import com.thebuzzmedia.exiftool.RawExifTool
     import com.thebuzzmedia.exiftool.Feature
     //private val tool1helper = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
@@ -56,8 +70,8 @@ object raw {
       .expireAfterWrite(20, TimeUnit.SECONDS)
       .removalListener(new RemovalListener[String, ExifToolService]() {
         def onRemoval(removal: RemovalNotification[String, ExifToolService]) = {
-          if(removal.getValue()!=null)
-        	  removal.getValue().close()
+          if (removal.getValue() != null)
+            removal.getValue().close()
         }
       }).build(new CacheLoader[String, ExifToolService]() {
         def load(key: String): ExifToolService = {
@@ -119,7 +133,11 @@ object raw {
       }
       map
     }
-    val bestExtractors: Extractor = location => analysers.transformKey(x => x /*file*/ )(fileAttributesExtractor(location)) ++ analysers.transformKey("exif" + _)(externalExifExtractor(location))
+    val bestExtractors: Extractor = 
+      location => 
+        analysers.transformKey(x => x /*file*/ )(fileAttributesExtractor(location)) ++ 
+    	analysers.transformKey("exif" + _)(externalExifExtractor(location)) ++
+    	analysers.transformKey("path" + _)(pathExtractor(location))
   }
 
   object analysers {
@@ -151,7 +169,7 @@ object raw {
       val original = maps.foldLeft(Map[String, String]())((x, y) => x ++
         transformKey(keyTransformer(_, y._1))(y._3))
       maps.foldLeft(Map[String, String]())((x, y) => x ++
-        transformKey(key=>if(!original.contains(key)) key else keyTransformer(key, y._1))(y._3))
+        transformKey(key => if (!original.contains(key)) key else keyTransformer(key, y._1))(y._3))
     }
   def keyTransformer(key: String, source: String): String = if (source.isEmpty) key else key + "#" + source
   private def bestExifFullExtractor: Boolean => InputLocation => Item =

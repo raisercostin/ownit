@@ -12,8 +12,8 @@ object FormatAnalyser {
     result
   }
   //exifFileModifyDate might be wrong but still useful
-    val dateAnalyser = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S'+XXXX')|$exifFileModifyDate(%Y-%m-%d--%H-%M-%SZ)|(XXXX-XX-XX--XX-XX-XX+XXXX)"
-    val localDateTimeAnalyser = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate("+Formats.localDateTimeInternalExifFormatterPattern+")"
+    val dateAnalyser = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S'+XXXX')|$exifFileModifyDate(%Y-%m-%d--%H-%M-%SZ)|(XXXX-XX-XX--XX-XX-XX+XXXX)"
+    val localDateTimeAnalyser = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate("+Formats.localDateTimeInternalExifFormatterPattern+")"
 }
 case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   import scala.util.{ Try, Success, Failure }

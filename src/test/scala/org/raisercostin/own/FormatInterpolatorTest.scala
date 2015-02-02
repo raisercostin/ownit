@@ -13,6 +13,7 @@ import org.raisercostin.tags.FormatAnalyser
 @RunWith(classOf[org.scalatest.junit.JUnitRunner])
 class FormatInterpolatorTest extends FunSuite with BeforeAndAfterAll with TryValues {
   import org.junit.Assert._
+  import org.scalatest.Matchers._
   test("test interpolator with invalid format") {
     val int = FormatInterpolator(Map("a" -> new org.joda.time.DateTime(0).toString(Formats.dateTimeInternalExifFormatter)))
     import org.scalatest.Matchers._
@@ -48,7 +49,7 @@ class FormatInterpolatorTest extends FunSuite with BeforeAndAfterAll with TryVal
   test("can't construct a DateTime from a time with missing timezone") {
     val local = Formats.toStandard(new LocalDateTime(2015,1,28,9,29,0,0))
     assertEquals("2015-01-28T09:29:00",local)
-    assertEquals("Failure(java.lang.RuntimeException: Couldn't extract a DateTime from value [2015-01-28T09:29:00] using formatters.)",Formats.extractDateTime(local).toString())
+    Formats.extractDateTime(local).toString() should startWith("Failure(java.lang.RuntimeException: Couldn't extract a DateTime from value [2015-01-28T09:29:00] using formatters:")
     assertEquals("2015-01-28T09:29:00.000",Formats.extractLocalDateTime(local).get.toString())
   }
   test("format interpolator with multiple formatters") {

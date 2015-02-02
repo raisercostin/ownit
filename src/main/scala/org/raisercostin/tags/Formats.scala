@@ -34,7 +34,7 @@ object Formats {
       else
         Success(value.toString)
     else
-      ((simpleConverter orElse dateTimeConverter)((format, value))).orElse(localDateTimeConverter(format, value)).orElse(useFormatString(format,value))
+      ((simpleConverter orElse dateTimeConverter)((format, value))).orElse(localDateTimeConverter(format, value)).orElse(useFormatString(format, value))
 
   def simpleConverter: PartialFunction[(String, String), Try[String]] = {
     case (format, value) if format.contains("%%") => Success(format.replaceAllLiterally("%%", value))
@@ -67,25 +67,24 @@ object Formats {
     case (format, "") =>
       Success(format)
   }
-/*
-  case class DateTimeFormatWithPattern(val pattern: String) {
-    lazy val formatter: DateTimeFormatter = DateTimeFormat.forPattern(pattern)
-    def withOffsetParsed = DateTimeFormatWithPattern(pattern)
+  object Named {
+    implicit def toT[T](named: Named[T]): T = named.value
+    def apply[T](name: String, generator: (String) => T) = new Named[T](name, generator(name))
   }
-  object DateTimeFormatWithPattern {
-    implicit def toDateTimeFormatter(format: DateTimeFormatWithPattern) = format.formatter
-  }
-*/
+  case class Named[T](name: String, value: T)
 
-  val localDateTimeInternalExifFormatterPattern = "yyyy:MM:dd HH:mm:ss"
-  val localDateTimeInternalExifFormatter = DateTimeFormat.forPattern(localDateTimeInternalExifFormatterPattern)
-  val localDateTimeFormatterISO = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss")
+  val localDateTimeInternalExifFormatter = Named("yyyy:MM:dd HH:mm:ss", DateTimeFormat.forPattern _)
+  val localDateTimeInternalExifFormatterPattern = localDateTimeInternalExifFormatter.name
+  val localDateTimeFormatterISO = Named("yyyy-MM-dd'T'HH:mm:ss", DateTimeFormat.forPattern _)
   def toStandard(value: LocalDateTime): String = value.toString(localDateTimeFormatterISO)
 
-  val dateTimeInternalExifFormatter = DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ssZ").withOffsetParsed()
-  val dateTimeInternalExifFormatter2 = DateTimeFormat.forPattern("yyyy:MM:dd HH:mm:ss.SSSZ").withOffsetParsed()
-  private val exifDateTimeFormatter3 = DateTimeFormat.forPattern("yyyy:00:00 00:00:00")
-  private val dateTimeIsoFormatter = ISODateTimeFormat.dateTime().withOffsetParsed()
+  private val patternWithOffsetParsed = (x: String) => DateTimeFormat.forPattern(x).withOffsetParsed()
+  val dateTime4 = Named("yyyy-MM-dd'T'HH:mm:ssZ", patternWithOffsetParsed)
+  val dateTimePattern = dateTime4.name
+  val dateTimeInternalExifFormatter = Named("yyyy:MM:dd HH:mm:ssZ", patternWithOffsetParsed)
+  val dateTimeInternalExifFormatter2 = Named("yyyy:MM:dd HH:mm:ss.SSSZ", patternWithOffsetParsed)
+  private val exifDateTimeFormatter3 = Named("yyyy:00:00 00:00:00", DateTimeFormat.forPattern _)
+  private val dateTimeIsoFormatter = Named("yyyy-MM-dd'T'HH:mm:ss.SSSZZ", ISODateTimeFormat.dateTime().withOffsetParsed())
   def toStandard(value: DateTime): String = value.toString(dateTimeIsoFormatter)
   def toStandard(value: DateTimeZone): String = value.toString
 
@@ -98,7 +97,7 @@ object Formats {
     value match {
       case text: String =>
         val formatters = Seq(localDateTimeInternalExifFormatter, localDateTimeFormatterISO)
-          def parse(value: DateTimeFormatter) = Try { LocalDateTime.parse(text.trim, value) }
+          def parse(format: Named[DateTimeFormatter]) = Try { LocalDateTime.parse(text.trim, format) }
         parseInOrder("LocalDateTime", formatters, parse, text.trim)
       case date: Date =>
         Try { new LocalDateTime(date) }
@@ -116,9 +115,9 @@ object Formats {
     import java.util.Date
     value match {
       case text: String =>
-        val formatters = Seq(dateTimeIsoFormatter, dateTimeInternalExifFormatter2, dateTimeInternalExifFormatter, exifDateTimeFormatter3)
-          def parse(value: DateTimeFormatter) = Try { DateTime.parse(text.trim, value) }
-        parseInOrder("DateTime", formatters, parse, text.trim)
+        val formatters = Seq(dateTime4, dateTimeIsoFormatter, dateTimeInternalExifFormatter2, dateTimeInternalExifFormatter, exifDateTimeFormatter3)
+          def parseDateTime(format: Named[DateTimeFormatter]) = Try { DateTime.parse(text.trim, format) }
+        parseInOrder("DateTime", formatters, parseDateTime, text.trim)
       case date: Date =>
         Try { new DateTime(date) }
       case date: GregorianCalendar =>
@@ -128,13 +127,13 @@ object Formats {
     }
   }
 
-  private def failureDetail[U](detail: String, value: String): Throwable => Try[U] = f => Failure[U](new RuntimeException(s"Couldn't extract a ${detail} from value [$value] using formatters.", f))
-  private def parseInOrder[T, U](detail: String, formatters: Seq[T], parse: T => Try[U], value: String): Try[U] =
+  private def failureDetail[U](detail: String, value: String, formatters: Seq[Any]): Throwable => Try[U] = f => Failure[U](new RuntimeException(s"Couldn't extract a ${detail} from value [$value] using formatters:\n\t${formatters.mkString("\n\t")}.", f))
+  def parseInOrder[T, U](detail: String, formatters: Seq[T], parse: T => Try[U], value: String): Try[U] =
     formatters.drop(1).foldLeft(parse(formatters.head))((prev, formatter) => prev.orElse(parse(formatter)))
       .
       transform(
         x => Success(x),
-        failureDetail(detail, value))
+        failureDetail(detail, value, formatters))
 
   private def fromIrfanViewToJodaDateTime(format: String) = {
     //%Y-%m-%d--%H-%M-%S

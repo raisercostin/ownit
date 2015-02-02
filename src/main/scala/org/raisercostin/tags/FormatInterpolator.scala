@@ -84,9 +84,9 @@ object FormatInterpolator{
     //val patternAll2 = s"""$word(\\|$word)*(\\|$simpleWord)?$format?"""
     val sectionsRegex = sections.r
     val sectionRegex = fullSection.r
-    println(s"sections=$sections")
-    println(s"fullSelector=$fullSelector")
-    println(s"fullSection=$fullSection")
+//    println(s"sections=$sections")
+//    println(s"fullSelector=$fullSelector")
+//    println(s"fullSection=$fullSection")
 }
 case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
   import FormatInterpolator._
@@ -99,7 +99,7 @@ case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
     result = sectionsRegex.replaceAllIn(result, _ match {
       //result = """(\$(?:(?:\w|[|$#])+))\(([^)]+)\)(?:[|](\$(?:(?:\w|[|$#])+))\(([^)]+)\))*""".r.replaceAllIn(result, (_: scala.util.matching.Regex.Match) match {
       case all =>
-        println(s"matched[${all.matched}]")
+        //println(s"matched[${all.matched}]")
         val matcher = sectionRegex findAllIn all.matched
         val all2 = matcher map { _ => (matcher.group(1).stripPrefix("|"), Option(matcher.group(2))) }
         expandMultipleSelectors(all2.toList).get
@@ -123,7 +123,7 @@ case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
     result
   }
   private def expandMultipleSelectors(all: List[(String, Option[String])]): Try[String] = {
-    println(all.mkString("formatters\n\t", "\n\t", "\n"))
+    //println(all.mkString("formatters\n\t", "\n\t", "\n"))
     val values: Stream[Try[String]] = all.toStream.map { case (selector, format) => expandMultiple(selector, format).map(scala.util.matching.Regex.quoteReplacement) }
     var cashed = Seq[Try[String]]()
     val firstGood = values.filter { x => if (x.isFailure) cashed = cashed :+ x; x.isSuccess }

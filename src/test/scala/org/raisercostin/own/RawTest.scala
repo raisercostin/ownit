@@ -31,7 +31,7 @@ class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
     println(all.mkString("\n"))
     assertEquals("MOV", tags.fileExtension.get)
     assertEquals("${const:MVI}_${exifFileNumberMinor}.${fileExtension}", tags.analyse(file.name).get)
-    assertEquals(239, all.size)
+    assertEquals(241, all.size)
     //val tags2 = raw2.BestExifExtractor.extract(Locations.classpath("MVI_2366.MOV")).get.tags.toSeq.sortBy(_._1)
     //println(tags.mkString("\n"))
     //    assertEquals(214, tags2.size)
