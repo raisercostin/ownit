@@ -34,7 +34,7 @@ object Formats {
       else
         Success(value.toString)
     else
-      ((simpleConverter orElse dateTimeConverter)((format, value))).orElse(localDateTimeConverter(format, value))
+      ((simpleConverter orElse dateTimeConverter)((format, value))).orElse(localDateTimeConverter(format, value)).orElse(useFormatString(format,value))
 
   def simpleConverter: PartialFunction[(String, String), Try[String]] = {
     case (format, value) if format.contains("%%") => Success(format.replaceAllLiterally("%%", value))
@@ -62,6 +62,10 @@ object Formats {
         case Success(s) => Success(s)
         case Failure(ex) => Failure(new RuntimeException(s"Couldn't format date with [$format] " + ex.getMessage(), ex))
       }
+  }
+  def useFormatString: PartialFunction[(String, String), Try[String]] = {
+    case (format, "") =>
+      Success(format)
   }
 /*
   case class DateTimeFormatWithPattern(val pattern: String) {

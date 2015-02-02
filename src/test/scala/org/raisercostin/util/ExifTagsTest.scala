@@ -105,7 +105,6 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
   }
   test("date time in utc using gps") {
     val tags: ExifTags = raw.loadExifTags(Locations.classpath("20140206_135438_Rue Guimard.jpg"))
-    println(tags.tags.tags.mkString("\n"))
     val a = tags.gpsDateTimeUTC.get
     assertEquals("2014-02-06T12:54:35.000Z", Formats.extractDateTime("2014:02:06 12:54:35Z").get.toString())
     assertEquals("2014-02-06T12:54:35.000+10:00", Formats.extractDateTime("2014:02:06 12:54:35+10").get.toString())
@@ -133,5 +132,10 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
     val tags: ExifTags = raw.loadExifTags(file)
     val newName = tags.analyse(file.name).get
     assertEquals("${const:MVI}_${exifFileNumberMinor}.${fileExtension}", newName)
+  }
+  test("feature-extract file modification as fallback"){
+    val tags: ExifTags = raw.loadExifTags(Locations.classpath("foursquare_photo_tmp.jpg"))
+     println(tags.tags.tags.mkString("\n"))
+   assertEquals("2013-08-21T18:03:56.000",tags.localDateTime.get.toString())
   }
 }

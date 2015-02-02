@@ -19,7 +19,8 @@ object Renamer {
     //test
     //main2(args)
     //ownPics("""d:\personal\work\conta\brainlight&pfa\440_0111\""","""proposed1""")
-    ownPics("""d:\personal\photos-tofix\photos-old-todelete\""", """-proposed1""")
+    //ownPics("""d:\personal\photos-tofix\photos-old-todelete\""", """-proposed1""")
+    ownPics("""d:\personal\work\ownit\src\test\resources\test-timezone\""", """-proposed1""")
   }
   def main2(args: Array[String]) = {
     args match {

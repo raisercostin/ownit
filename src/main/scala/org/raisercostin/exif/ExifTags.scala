@@ -36,9 +36,12 @@ object ExifTags {
 case class ExifTags(initialTags: Tags) {
   import ExifTags._
   def deviceId: Option[String] = Some(initialTags.interpolate("exifModel:$exifModel|-exifCanonModelId:$exifCanonModelID|-exifProfileID:$exifProfileID|-exifDeviceModelDesc:$exifDeviceModelDesc|-exifDeviceModel:$exifDeviceModel|").get)
-  def localDateTime: Option[LocalDateTime] = initialTags.interpolate("$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(" + Formats.localDateTimeInternalExifFormatterPattern + ")").toOption.flatMap(initialTags.asLocalDateTime)
-  def dateTimeZone: Option[DateTimeZone] = for(x<-localDateTime; y<-gpsDateTimeUTC) yield computeTimezone(x,y)
-  def dateTime:Option[DateTime] = for(x<-localDateTime;y<-dateTimeZone) yield x.toDateTime(y)
+  lazy val localDateTime: Option[LocalDateTime] = initialTags.interpolate(
+      FormatAnalyser.localDateTimeAnalyser
+      ).toOption.flatMap(initialTags.asLocalDateTime)
+  //FormatAnalyser.dateAnalyser
+  lazy val dateTimeZone: Option[DateTimeZone] = for(x<-localDateTime; y<-gpsDateTimeUTC) yield computeTimezone(x,y)
+  lazy val dateTime:Option[DateTime] = for(x<-localDateTime;y<-dateTimeZone) yield x.toDateTime(y)
   //exifFileModifyDate could have timezone if not modified?
   def fileExtension = initialTags.getString("fileExtension")
   def fileNumber = initialTags.getInt("exifFileNumber")

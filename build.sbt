@@ -24,6 +24,7 @@ libraryDependencies ++= Seq(
 	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.7"
 	//for guava
 	,"com.google.code.findbugs" % "jsr305" % "2.0.3"
+	//,"org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3"
 )
 
 sbtPlugin := true
