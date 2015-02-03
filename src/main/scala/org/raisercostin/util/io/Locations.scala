@@ -47,6 +47,7 @@ trait BaseLocation extends NavigableLocation {
   def raw: String
   def extension: String = FilenameUtils.getExtension(absolute)
   def name: String = FilenameUtils.getName(absolute)
+  def path: String = FilenameUtils.getPath(absolute)
   def baseName: String = FilenameUtils.getBaseName(absolute)
   def parentName: String = toFile.getParentFile.getAbsolutePath
   /**To read data you should read the inputstream*/
@@ -96,6 +97,19 @@ trait BaseLocation extends NavigableLocation {
   def hasDirs = RichPath.wrapPath(toPath).list.find(_.toFile.isDirectory).nonEmpty
   def isFile = toFile.isFile
   def exists = toFile.exists
+  def renamedIfExists: this.type = {
+      def findUniqueName[T <: BaseLocation](destFile: T):T = {
+        var newDestFile = destFile
+        var counter = 1
+        while (newDestFile.exists) {
+          newDestFile = destFile.withBaseName(baseName => baseName + "-" + counter)
+          counter += 1
+        }
+        newDestFile
+      }
+    findUniqueName(this)
+  }
+
   def existing: this.type =
     if (toFile.exists)
       this
@@ -276,7 +290,7 @@ case class ClassPathInputLocation(initialResourcePath: String) extends InputLoca
     else
       initialResourcePath.substring(0, index)
   }
-  def asFile:FileLocation = Locations.file(toFile)
+  def asFile: FileLocation = Locations.file(toFile)
 }
 
 case class ZipInputLocation(zip: InputLocation, entry: Option[java.util.zip.ZipEntry]) extends InputLocation {
