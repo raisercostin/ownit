@@ -12,7 +12,7 @@ import org.joda.time.DateTime
 import org.joda.time.LocalDateTime
 
 @RunWith(classOf[JUnitRunner])
-class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
+class ExifTagsTest extends FunSuite{
   import org.raisercostin.exif._
   ignore("extract exif from one file") {
     val file = Locations.classpath("20131008_175240.jpg")
@@ -150,5 +150,11 @@ class ExifTagsTest extends FunSuite with BeforeAndAfterAll {
     assertEquals("2014:07:22 20:04:27", tags("pathLocalDateTime").get.toString())
     assertEquals("+03:00", tags.dateTimeZone.get.toString())
     assertEquals("2014-07-22T20:04:27.000+03:00", tags.dateTime.get.toString())
+  }
+  test("bug in exiftool that cannot read utf-8 file names on windows") {
+    val tags: ExifTags = raw.loadExifTags(Locations.classpath("sample1-Mircea-Vodă.jpg"))
+    println(tags.tags.tags.mkString("\n"))
+    assertEquals("sample1-Mircea-Vodă.jpg", tags("exifFileName").get.toString())  
+    assertEquals("D:/personal/work/exiftool/exiftool/target/test-classes/", tags("exifDirectory").get.toString())  
   }
 }

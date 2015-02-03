@@ -20,8 +20,9 @@ object Renamer {
     //main2(args)
     //ownPics("""d:\personal\work\conta\brainlight&pfa\440_0111\""","""proposed1""")
     //ownPics("""d:\personal\photos-tofix\photos-old-todelete\""", """-proposed2""")
-    ownPics("""d:\personal\photos-tofix\photos2""","""-proposed4""")
-  }
+    ownPics("""d:\personal\photos-tofix\2013\""","""-proposed1""")
+    //System.exit(0)
+  }	
   def main2(args: Array[String]) = {
     args match {
       case Array(from: String, to: String) =>
@@ -67,7 +68,7 @@ object Renamer {
     println("rename from " + from + " to " + to)
     val placeBadFiles = to.withName(_ + "-bad")
     val placeGoodFiles = to.withName(_ + "-good")
-    val toDevices = placeGoodFiles.child("devices.txt").withParent(_.mkdirIfNecessary).deleteIfExists
+    val toDevices = placeGoodFiles.withBaseName(_+"-devices").renamedIfExists
     var allDevices = Set[String]()
     println(from.traverse.filter {
       case (file1, x) =>
@@ -111,7 +112,7 @@ object Renamer {
             val dest = if (badChange) placeBadFiles else placeGoodFiles
             val baseName = if (nameChanged) newName else src.name
             val destFile = dest.child(src.relativeTo(from)).withName(_ => baseName).mkdirOnParentIfNecessary
-            val newDestFile = findUniqueName(destFile)
+            val newDestFile = destFile.renamedIfExists
 
             val ANSI_BACK = "" //"\u001B[1F";
             println(ANSI_BACK + "rename  " + file + " to " +
@@ -130,16 +131,16 @@ object Renamer {
       case Failure(f) => dump(f)
     }.mkString("\n"))
   }
-
-  def findUniqueName(destFile: FileLocation) = {
-    var newDestFile = destFile
-    var counter = 1
-    while (newDestFile.exists) {
-      newDestFile = destFile.withBaseName(baseName => baseName + "-" + counter)
-      counter += 1
-    }
-    newDestFile
-  }
+//
+//  def findUniqueName(destFile: FileLocation) = {
+//    var newDestFile = destFile
+//    var counter = 1
+//    while (newDestFile.exists) {
+//      newDestFile = destFile.withBaseName(baseName => baseName + "-" + counter)
+//      counter += 1
+//    }
+//    newDestFile
+//  }
 
   def fileWildcard(filter: String, file: String): Boolean = {
     val regex = "^" + filter.replace("?", ".?").replace("*", ".*?") + "$"

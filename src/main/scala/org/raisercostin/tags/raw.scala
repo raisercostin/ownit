@@ -52,20 +52,22 @@ object raw {
 
     val pathExtractor: Extractor = location => {
       val path = location.name
-      val formats = """(\d{4})(\d{2})(\d{2}).*(\d{2})(\d{2})(\d{2})""".r.unanchored
-      val localDateTime = path match {
+      val formats = """([12]\d{3})[._\- ]*([01]\d)[._\- ]*([0-3]\d)[._\- ]*([0-6]\d)[._\- ]*([0-6]\d)[._\- ]*([0-6]\d)""".r.unanchored
+      val localDateTime = Try{path match {
         case formats(year, month, day, hour, minute, second) =>
           implicit def a2i(a: String) = a.toInt
           Some(new LocalDateTime(year, month, day, hour, minute, second))
         case _ => None
-      }
-      localDateTime.map{x=> Map("LocalDateTime"->x.toString(Formats.localDateTimeInternalExifFormatter))}.getOrElse(Map())
+      }}
+      val a= for{x <- localDateTime.toOption;y<-x} yield Map("LocalDateTime"->y.toString(Formats.localDateTimeInternalExifFormatter))
+      a.getOrElse(Map())
     }
 
     import com.thebuzzmedia.exiftool.RawExifTool
     import com.thebuzzmedia.exiftool.Feature
-    //private val tool1helper = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
-    //def tool1: ExifToolService = tool1helper
+    private val tool1helper = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+    def tool1: ExifToolService = tool1helper
+    /*
     val tool2helper = CacheBuilder.newBuilder().weakValues()
       .expireAfterWrite(20, TimeUnit.SECONDS)
       .removalListener(new RemovalListener[String, ExifToolService]() {
@@ -79,14 +81,16 @@ object raw {
           RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
         }
       })
-    def tool2: ExifToolService = tool2helper.get("one")
-    def tool: ExifToolService = tool2
+    //def tool2: ExifToolService = tool2helper.get("one")
+     */
+    def tool: ExifToolService = tool1
     val externalExifExtractor: Extractor = location => {
       import com.thebuzzmedia.exiftool.ReadOptions
 
       import scala.collection.JavaConversions._
-      tool.getImageMeta(location.toFile, new ReadOptions().withNumericOutput(true)).toMap
+      tool.getImageMeta(location.toFile, new ReadOptions().withNumericOutput(true)).toMap ++ corrected(location)
     }
+    def corrected(location:InputLocation):Map[String,String] = Map("FileName"->location.name,"Directory"->location.parent.path)
     //https://github.com/drewnoakes/metadata-extractor
     //val metadataExtractor: Extractor = ???
     val sanselanExifExtractor: Extractor = location => {
