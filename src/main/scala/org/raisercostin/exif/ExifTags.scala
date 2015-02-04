@@ -56,8 +56,9 @@ case class ExifTags(initialTags: Tags) {
   def interpolateAsDateTime(value: String): Try[DateTime] = asDateTime(initialTags.interpolate(value + "(" + Formats.dateTimePattern + ")"))
   def interpolateAsLocalDateTime(value: String): Try[LocalDateTime] = asLocalDateTime(initialTags.interpolate(value + "(" + Formats.localDateTimeFormatterISO.name + ")"))
   def dateTimeUTC: Try[DateTime] = {
-    val tags = "$exifGPSDateTime|$exifTrackCreateDate|$exifMediaCreateDate"
-    interpolateAsDateTime(tags) orElse interpolateAsLocalDateTime(tags).map(_.toDateTime(DateTimeZone.UTC))
+    val tagsLocal = "$exifGPSDateTime|$exifTrackCreateDate|$exifMediaCreateDate"
+    val tags = tagsLocal+"|$exifDateTimeOriginal"
+    interpolateAsDateTime(tags).map{_.withZone(DateTimeZone.UTC)} orElse interpolateAsLocalDateTime(tagsLocal).map(_.toDateTime(DateTimeZone.UTC))
   }
   def gpsDateTime = for (x <- gpsDateTimeUTC; y <- dateTimeZone) yield x.withZone(y)
   def gps(): Option[Gps] = gpsLatitude.map { x =>

@@ -20,7 +20,8 @@ object Renamer {
     //main2(args)
     //ownPics("""d:\personal\work\conta\brainlight&pfa\440_0111\""","""proposed1""")
     //ownPics("""d:\personal\photos-tofix\photos-old-todelete\""", """-proposed2""")
-    ownPics("""d:\personal\photos-tofix\2013\""","""-proposed1""")
+    //ownPics("""d:\personal\photos-tofix\2013-proposed1-bad\""","""-proposed3""")
+    ownPics("""d:\personal\photos-tofix\2014\""","""-proposed5""")
     //System.exit(0)
   }	
   def main2(args: Array[String]) = {
@@ -101,6 +102,7 @@ object Renamer {
             val fileNameFormat = tags.analyse(src.name)
             println("detected " + tags.analyse(src.relativeTo(src.parent.parent)))
             //val newName = tags.interpolate("$dateTime|$exifE36867|$exifModifyDate#THM|$exifModifyDate|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%SZ|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+            //val newName = tags.interpolate(dateAnalyser+"---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---$exifImageWidth$exifImageHeight(x%%)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
             val newName = tags.interpolate(dateAnalyser+"---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
             val imageOrVideo = tags.isImage || tags.isVideo
             //val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")

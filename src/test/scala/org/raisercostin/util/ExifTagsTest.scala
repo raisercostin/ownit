@@ -10,9 +10,10 @@ import org.raisercostin.tags.Formats
 import org.joda.time.DateTimeZone
 import org.joda.time.DateTime
 import org.joda.time.LocalDateTime
+import org.raisercostin.tags.FormatAnalyser
 
 @RunWith(classOf[JUnitRunner])
-class ExifTagsTest extends FunSuite{
+class ExifTagsTest extends FunSuite {
   import org.raisercostin.exif._
   ignore("extract exif from one file") {
     val file = Locations.classpath("20131008_175240.jpg")
@@ -154,7 +155,34 @@ class ExifTagsTest extends FunSuite{
   test("bug in exiftool that cannot read utf-8 file names on windows") {
     val tags: ExifTags = raw.loadExifTags(Locations.classpath("sample1-Mircea-Vodă.jpg"))
     println(tags.tags.tags.mkString("\n"))
-    assertEquals("sample1-Mircea-Vodă.jpg", tags("exifFileName").get.toString())  
-    assertEquals("D:/personal/work/exiftool/exiftool/target/test-classes/", tags("exifDirectory").get.toString())  
+    assertEquals("sample1-Mircea-Vodă.jpg", tags("exifFileName").get.toString())
+    assertEquals("D:/personal/work/exiftool/exiftool/target/test-classes/", tags("exifDirectory").get.toString())
+  }
+  test("eliminate full rename") {
+    val tags: ExifTags = raw.loadExifTags(Locations.classpath("""sample2-2013-12-29--12-49-06+0200---XXX-IMG_XXXX---at-Geamăna--Strada Basarabiei.jpg"""))
+    println(tags.tags.tags.mkString("\n"))
+    assertEquals("+02:00", tags.getDateTimeZone("dateTimeZone").get.toString)
+    assertEquals("+0200", Formats.toSimplified(tags.getDateTimeZone("dateTimeZone").get))
+    assertEquals("sample2-${dateTime+yyyy}-${dateTime+MM}-${dateTime+dd}--${dateTime+HH}-${dateTime+mm}-${dateTime+ss}${dateTimeZone}${const:---XXX-IMG_XXXX}${const:---at-}${compClosestLocation}--Strada Basarabiei.${fileExtension}", tags.compDetectedFormat.get)
+    assertEquals("sample2---Strada Basarabiei", tags.compRemaining.get)
+    assertEquals("2013-12-29--12-49-06+0200---XXX-IMG_XXXX---at-Geamăna--sample2---Strada Basarabiei.jpg", tags.interpolate(FormatAnalyser.dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get)
+  }
+  test("bug - pathLocalDateTime should be extracted from compRemaining and not first encountered dateTime") {
+    val tags: ExifTags = raw.loadExifTags(Locations.classpath("""sample3-2014-07-22--17-04-25------20140722_140433_sample3.mp4"""))
+    println(tags.tags.tags.mkString("\n"))
+    assertEquals("2014-07-22T17:04:32.000Z", tags.dateTimeUTC.get.toString())
+    assertEquals("known bug","2014-07-22T14:04:33", tags.getLocalDateTime("pathLocalDateTime").get.toString())
+    assertEquals("2013-12-30T17:36:03", tags.localDateTime.get.toString)
+    assertEquals("+02:00", tags.dateTimeZone.get.toString)
+    assertEquals("2013-12-30T17:36:03.000+02:00", tags.dateTime.get.toString())
+  }
+  test("bug - some videos have dateTime with proper timezone") {
+    val tags: ExifTags = raw.loadExifTags(Locations.classpath("""sample4-00006.MTS"""))
+    println(tags.tags.tags.mkString("\n"))
+    assertEquals("2015-01-06T11:08:24.000+02:00", tags.getDateTime("exifDateTimeOriginal").get.toString())
+    assertEquals("2015-01-06T11:08:24.000+02:00", tags.dateTime.get.toString())
+    assertEquals("+02:00", tags.dateTimeZone.get.toString)
+    assertEquals("2015-01-06T11:08:24.000", tags.localDateTime.get.toString)
+    assertEquals("2015-01-06T09:08:24.000Z", tags.dateTimeUTC.get.toString())
   }
 }

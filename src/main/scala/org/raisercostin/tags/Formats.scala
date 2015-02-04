@@ -11,6 +11,7 @@ import org.joda.time.format.DateTimeFormat
 import org.joda.time.format.DateTimeFormatter
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.DateTimeZone
+import org.joda.time.tz.DateTimeZoneBuilder
 object Formats {
   import scala.util.{ Try, Failure, Success }
   def convert(value: String, convertor: Option[String] = None, convertorNull: Option[String] = None): Try[String] =
@@ -87,7 +88,15 @@ object Formats {
   private val dateTimeIsoFormatter = Named("yyyy-MM-dd'T'HH:mm:ss.SSSZZ", ISODateTimeFormat.dateTime().withOffsetParsed())
   def toStandard(value: DateTime): String = value.toString(dateTimeIsoFormatter)
   def toStandard(value: DateTimeZone): String = value.toString
+  def toSimplified(value: DateTimeZone): String = dateTimeZoneFormatter.print(new DateTime(0, value))
 
+  private val dateTimeZoneFormatter = Named("Z", patternWithOffsetParsed)
+  def extractDateTimeZone(value: String): Try[DateTimeZone] = value match { //Try{DateTimeZone.forID(value)}
+    case "UTC" => 
+      Success(DateTimeZone.UTC)
+    case value =>
+      Try { dateTimeZoneFormatter.parseDateTime(value).getZone() }
+  }
   //def extractLocalDateTime(value: String): Try[LocalDateTime] = Try { LocalDateTime.parse(value, localDateTimeInternalExifFormatter.withOffsetParsed()) }
   def extractLocalDateTime(value: Any): Try[LocalDateTime] = {
     import org.joda.time.DateTime
