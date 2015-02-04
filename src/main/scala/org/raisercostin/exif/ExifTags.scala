@@ -77,17 +77,19 @@ case class ExifTags(initialTags: Tags) {
   def fileNumberMinor = compFileNumberMinor.map(_.toInt)
   val compDetectedFormat: Try[String] = Try { initialTags.getString("exifFileName").get }.flatMap(tag => intermediateTags.analyse(tag))
   val compDetectedPathFormat: Try[String] = Try { initialTags.getString("exifDirectory").get }.flatMap(tag => intermediateTags.analyse(tag))
-  val compRemaining: Try[String] = compDetectedFormat.map { format => FormatAnalyser.cleanFormat(format) }
+  val compRemaining: Try[Option[String]] = compDetectedFormat.map { format => Option(FormatAnalyser.cleanFormat(format)).filter(_.trim.nonEmpty) }
 
   private def intermediateNewTags: Map[String, String] = Map(
     "dateTime" -> dateTime.map { Formats.toStandard },
     "dateTimeZone" -> dateTimeZone.map { Formats.toStandard },
     "compClosestLocation" -> compClosestLocation, "exifFileNumberMajor" -> compFileNumberMajor.toOption, "exifFileNumberMinor" -> compFileNumberMinor.toOption).collect { case (key, Some(value)) => (key, value) }
   private def finalNewTags: Map[String, String] = Map(
-    "compDetectedFormat" -> compDetectedFormat.toOption, "compDetectedPathFormat" -> compDetectedPathFormat.toOption, "compRemaining" -> compRemaining.toOption).collect { case (key, Some(value)) => (key, value) }
+    "compDetectedFormat" -> compDetectedFormat.toOption, "compDetectedPathFormat" -> compDetectedPathFormat.toOption, "compRemaining" -> compRemaining.toOption.flatten).collect { case (key, Some(value)) => (key, value) }
   private lazy val intermediateTags: Tags = initialTags.copy(tags = initialTags.tags ++ intermediateNewTags)
   lazy val tags: Tags = intermediateTags.copy(tags = intermediateTags.tags ++ finalNewTags)
 
   def isImage: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("image/")
   def isVideo: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("video/")
+  
+  val dateGroup = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate"
 }

@@ -171,6 +171,7 @@ trait InputLocation extends BaseLocation {
     Try(readContent)
   //Try(existing(toSource).getLines mkString ("\n"))
   def unzip: ZipInputLocation = ???
+  def copyAsHardLink(dest:OutputLocation, overwriteIfAlreadyExists: Boolean = false):this.type = { dest.copyFromAsHardLink(this,overwriteIfAlreadyExists); this}
 }
 trait OutputLocation extends BaseLocation {
   def asInput: InputLocation
@@ -208,7 +209,7 @@ trait OutputLocation extends BaseLocation {
   def withAppend: this.type
   def copyFrom(src: InputLocation) = FileUtils.copyFile(src.toFile, toFile)
   def copyFromAsSymlink(src: InputLocation) = Files.createSymbolicLink(toPath, src.toPath)
-  def copyFromAsHardLink(src: InputLocation, overwriteIfAlreadyExists: Boolean = false) =
+  def copyFromAsHardLink(src: InputLocation, overwriteIfAlreadyExists: Boolean = false):this.type = {
     if (overwriteIfAlreadyExists) {
       Files.createLink(toPath, src.toPath)
     } else {
@@ -218,6 +219,8 @@ trait OutputLocation extends BaseLocation {
         Files.createLink(toPath, src.toPath)
       }
     }
+    this
+  }
 }
 
 trait InOutLocation extends InputLocation with OutputLocation {

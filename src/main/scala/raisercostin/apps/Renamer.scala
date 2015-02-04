@@ -13,6 +13,7 @@ import org.raisercostin.exif.ExifTags
 import org.raisercostin.tags.raw
 import org.raisercostin.util.io.FileLocation
 import org.raisercostin.tags.FormatAnalyser._
+import org.raisercostin.util.io.OutputLocation
 
 object Renamer {
   def main(args: Array[String]) = {
@@ -21,9 +22,9 @@ object Renamer {
     //ownPics("""d:\personal\work\conta\brainlight&pfa\440_0111\""","""proposed1""")
     //ownPics("""d:\personal\photos-tofix\photos-old-todelete\""", """-proposed2""")
     //ownPics("""d:\personal\photos-tofix\2013-proposed1-bad\""","""-proposed3""")
-    ownPics("""d:\personal\photos-tofix\2014\""","""-proposed5""")
+    ownPics("""d:\personal\photos-problematic\""", """-proposed1""")
     //System.exit(0)
-  }	
+  }
   def main2(args: Array[String]) = {
     args match {
       case Array(from: String, to: String) =>
@@ -49,28 +50,27 @@ object Renamer {
     println(raw.loadExifTags(Locations.file(file)).tags.tags.mkString("\n"))
   }
 
-  def ownPics(fromPath: String, toRelativeOrAbsolute: String, filter: Option[String] = None) = try {
-    //main2(if(args.isEmpty) """d:\personal\photos\_desene\""" else args(0))
-    //main2(""".\photo04.jpg""")
-    //println(RichExif.formatIrfanView(""".\photo04.jpg""", "$E36867(%Y-%m-%d--%H-%M-%S)--$F"))
-    //    main2(""".\20140617_191316_Bulevardul Mircea Vodă.jpg""")
-    //println(RichExif.formatIrfanView(""".\20140617_191316_Bulevardul Mircea Vodă.jpg""", "$E36867(%Y-%m-%d--%H-%M-%S)--$F"))
+  case class DevicesDao(var allDevices: Set[String], toDevices: FileLocation) {
+    def checkDeviceId(tags: ExifTags) = {
+      val device = tags.deviceId
+      if (!device.isDefined) {
+        println(tags.tags.tags.mkString("\n"))
+      }
+      if (device.isDefined && !allDevices.contains(device.get)) {
+        allDevices += device.get
+        toDevices.appendContent(device.get + "\n")
+      }
+    }
+  }
 
-    //d:\personal\photos\
-    //val from = """.\test\special3"""
-    //val from = """d:\personal\photos\2014-XX-XX\"""
-    //val from = """d:\personal\work\raisercostin-utils\test\other\00006.MTS"""
-    //val from = """d:\_good"""
-    //val to = """d:\proposed"""
-    //val place = """.\test\20131008_175240.jpg"""
+  def ownPics(fromPath: String, toRelativeOrAbsolute: String, filter: Option[String] = None) = try {
     val from = Locations.file(fromPath)
     val toInitial = Locations.file(toRelativeOrAbsolute)
     val to = if (toInitial.isAbsolute) toInitial else from.withName(_ + toRelativeOrAbsolute)
     println("rename from " + from + " to " + to)
     val placeBadFiles = to.withName(_ + "-bad")
     val placeGoodFiles = to.withName(_ + "-good")
-    val toDevices = placeGoodFiles.withBaseName(_+"-devices").renamedIfExists
-    var allDevices = Set[String]()
+    implicit val allDevices = DevicesDao(Set(), placeGoodFiles.withBaseName(_ + "-devices").renamedIfExists)
     println(from.traverse.filter {
       case (file1, x) =>
         val file = file1.toFile
@@ -78,71 +78,68 @@ object Renamer {
     }.map {
       case (file1, x) =>
         val file = file1.toFile
-        println("analyze " + file.getAbsolutePath + " ...")
         val src = Locations.file(file)
-        val newName =
-          //          if (src.name == ".picasa.ini")
-          //            Try(src.name)
-          //          else
-          Try {
-            //println(file + ":" + RichExif.extractExifAsMap(file).mkString("\n"))
-            //RichExif.formatIrfanView(file, "$E36867(%Y-%m-%d--%H-%M-%S)---$F") + " has format " + RichExif.extractFormat(file) + " remaining:" + remainingFormat(file))
-            val tags = raw.loadExifTags(src)
-            val device = tags.deviceId
-            if (!device.isDefined) {
-              println(tags.tags.tags.mkString("\n"))
-            }
-            if (device.isDefined && !allDevices.contains(device.get)) {
-              allDevices += device.get
-              toDevices.appendContent(device.get + "\n")
-            }
-
-            //println("attributes " + file + " : \n" + (toSimpleMap(metadata).mkString("\n")))
-            //val newName = RichExif.format(metadata, "$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
-            val fileNameFormat = tags.analyse(src.name)
-            println("detected " + tags.analyse(src.relativeTo(src.parent.parent)))
-            //val newName = tags.interpolate("$dateTime|$exifE36867|$exifModifyDate#THM|$exifModifyDate|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%SZ|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
-            //val newName = tags.interpolate(dateAnalyser+"---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---$exifImageWidth$exifImageHeight(x%%)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
-            val newName = tags.interpolate(dateAnalyser+"---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
-            val imageOrVideo = tags.isImage || tags.isVideo
-            //val extensionsWithExif = Set("jpg", "jpeg", "gif", "mp4", "avi", "png", "bmp")
-            //extensionsWithExif.contains(src.extension.toLowerCase)
-
-            val badName = newName.contains("XXXX-XX-XX--XX-XX-XX")
-            val badChange = badName && imageOrVideo
-            val nameChanged = !badName && imageOrVideo
-            val dest = if (badChange) placeBadFiles else placeGoodFiles
-            val baseName = if (nameChanged) newName else src.name
-            val destFile = dest.child(src.relativeTo(from)).withName(_ => baseName).mkdirOnParentIfNecessary
-            val newDestFile = destFile.renamedIfExists
-
-            val ANSI_BACK = "" //"\u001B[1F";
-            println(ANSI_BACK + "rename  " + file + " to " +
-              newDestFile.name + "\t\tdetectedFormat:" + tags.tags.analyse(src.name) + "\t" + newDestFile)
-            newDestFile.copyFromAsHardLink(src)
-            newName
-          }
-        newName.recover {
-          case e =>
-            e.printStackTrace
-            placeBadFiles.child(src.relativeTo(from)).mkdirOnParentIfNecessary.copyFromAsHardLink(src)
-            Failure(e)
-        }
-        newName
+        process(src, from, placeBadFiles, placeGoodFiles)
     }.filter(_.isFailure).map {
       case Failure(f) => dump(f)
     }.mkString("\n"))
   }
-//
-//  def findUniqueName(destFile: FileLocation) = {
-//    var newDestFile = destFile
-//    var counter = 1
-//    while (newDestFile.exists) {
-//      newDestFile = destFile.withBaseName(baseName => baseName + "-" + counter)
-//      counter += 1
-//    }
-//    newDestFile
-//  }
+
+  def process(src: FileLocation, from: FileLocation, placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(implicit devices: DevicesDao) = {
+    println("analyze " + src.absolute + " ...")
+    val newName = Try {
+      val tags = raw.loadExifTags(src)
+      devices.checkDeviceId(tags)
+      println("detected " + tags.analyse(src.relativeTo(src.parent.parent)))
+      val allRenamers = Seq(("flat", flat _), ("standard", standardizeName _),("byYear",byYear _), ("byYearMonth",byYearAndMonth _), ("byCounter",byCounter _))
+      allRenamers.foreach { case (name,renamer) =>
+        val newDestFile = renamer(placeBadFiles.withBaseName(_ + "-" + name), placeGoodFiles.withBaseName(_ + "-" + name))(from, src, tags)
+        val ANSI_BACK = "" //"\u001B[1F";
+        println(ANSI_BACK + "\t"+name+"\t> smartcopy  " + src + " to " +
+          newDestFile.name + "\t\tdetectedFormat:" + tags.tags.analyse(src.name) + "\t" + newDestFile)
+        src.copyAsHardLink(newDestFile)
+      }
+    }
+    newName.recover {
+      case e =>
+        e.printStackTrace
+        placeBadFiles.child(src.relativeTo(from)).mkdirOnParentIfNecessary.copyFromAsHardLink(src)
+        Failure(e)
+    }
+    newName
+  }
+
+  def byCounter(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
+    val newName = tags.interpolate("$exifFileNumberMajor(%%)|(XXX)-$exifFileNumberMinor(%%)|(XXXX)$compRemaining|(-%%|)$fileExtension(.%%)").get
+    placeGoodFiles.child(newName).mkdirOnParentIfNecessary.renamedIfExists
+  }
+  def byYearAndMonth(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
+    val newName = tags.interpolate(tags.dateGroup+"(yyyy)|(XXXX)-"+tags.dateGroup+"(MM-MMMM)|(XX)"+"\\"+dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+    placeGoodFiles.child(newName).mkdirOnParentIfNecessary.renamedIfExists
+  }
+  def byYear(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
+    val newName = tags.interpolate(tags.dateGroup+"(yyyy)|(XXXX)\\"+dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+    placeGoodFiles.child(newName).mkdirOnParentIfNecessary.renamedIfExists
+  }
+  def flat(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
+    val newName = tags.interpolate(dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+    placeGoodFiles.mkdirIfNecessary.child(newName).renamedIfExists
+  }
+  def standardizeName(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
+    //val newName = tags.interpolate("$exifE36867|exifModifyDate|exifDateTimeOriginal|fileModification(%Y-%m-%d--%H-%M-%S)---$compRemaining.$fileExtension").replaceAllLiterally("---.", ".")
+    //val newName = tags.interpolate("$dateTime|$exifE36867|$exifModifyDate#THM|$exifModifyDate|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|(%Y-%m-%d--%H-%M-%SZ|XXXX-XX-XX--XX-XX-XX)---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+    //val newName = tags.interpolate(dateAnalyser+"---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---$exifImageWidth$exifImageHeight(x%%)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+    val newName = tags.interpolate(dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+    val imageOrVideo = tags.isImage || tags.isVideo
+    val badName = newName.contains("XXXX-XX-XX--XX-XX-XX")
+    val badChange = badName && imageOrVideo
+    val nameChanged = !badName && imageOrVideo
+    val dest = if (badChange) placeBadFiles else placeGoodFiles
+    val baseName = if (nameChanged) newName else src.name
+    val destFile = dest.child(src.relativeTo(from)).withName(_ => baseName).mkdirOnParentIfNecessary
+    val newDestFile = destFile.renamedIfExists
+    newDestFile
+  }
 
   def fileWildcard(filter: String, file: String): Boolean = {
     val regex = "^" + filter.replace("?", ".?").replace("*", ".*?") + "$"
