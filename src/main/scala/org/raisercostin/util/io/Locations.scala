@@ -28,6 +28,7 @@ import scala.util.Failure
 import org.apache.commons.io.IOUtils
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.Files
+import java.security.AccessController
 
 private object Constants {
   val FILE_SEPARATOR = File.separator
@@ -98,7 +99,7 @@ trait BaseLocation extends NavigableLocation {
   def isFile = toFile.isFile
   def exists = toFile.exists
   def renamedIfExists: this.type = {
-      def findUniqueName[T <: BaseLocation](destFile: T):T = {
+      def findUniqueName[T <: BaseLocation](destFile: T): T = {
         var newDestFile = destFile
         var counter = 1
         while (newDestFile.exists) {
@@ -144,6 +145,7 @@ trait BaseLocation extends NavigableLocation {
     if (ext.length > 0)
       name + "." + ext
     else name
+  def length: Long = toFile.length()
 }
 trait InputLocation extends BaseLocation {
   def toInputStream: InputStream = new FileInputStream(absolute)
@@ -154,9 +156,23 @@ trait InputLocation extends BaseLocation {
     using(toInputStream)(inputStream => op(inputStream))
   def readLines =
     existing(toSource).getLines
+  def copyToIfNotExists(dest: OutputLocation) = {dest.existingOption.map(_.copyFrom(this));this}
   def copyTo(dest: OutputLocation) = {
+    val source = toInputStream
+    try {
+      val output = dest.toOutputStream
+      try {
+        IOUtils.copyLarge(source, output)
+        output.close()
+      } finally {
+        IOUtils.closeQuietly(output)
+      }
+    } finally {
+      IOUtils.closeQuietly(source)
+    }
     //overwrite
-    FileUtils.copyInputStreamToFile(toInputStream, dest.toFile)
+    //    FileUtils.copyInputStreamToFile(toInputStream, dest.toOutputStream)
+    //    IOUtils.copyLarge(toInputStream, dest.toOutputStream)
   }
   def readContent = {
     // Read a file into a string
@@ -170,8 +186,9 @@ trait InputLocation extends BaseLocation {
   def readContentAsText: Try[String] =
     Try(readContent)
   //Try(existing(toSource).getLines mkString ("\n"))
-  def unzip: ZipInputLocation = ???
-  def copyAsHardLink(dest:OutputLocation, overwriteIfAlreadyExists: Boolean = false):this.type = { dest.copyFromAsHardLink(this,overwriteIfAlreadyExists); this}
+  //def unzip: ZipInputLocation = ???
+  def unzip: ZipInputLocation = new ZipInputLocation(this, None)
+  def copyAsHardLink(dest: OutputLocation, overwriteIfAlreadyExists: Boolean = false): this.type = { dest.copyFromAsHardLink(this, overwriteIfAlreadyExists); this }
 }
 trait OutputLocation extends BaseLocation {
   def asInput: InputLocation
@@ -207,9 +224,9 @@ trait OutputLocation extends BaseLocation {
   def writeContent(content: String): this.type = usingPrintWriter(_.print(content))
   def appendContent(content: String) = withAppend.writeContent(content)
   def withAppend: this.type
-  def copyFrom(src: InputLocation) = FileUtils.copyFile(src.toFile, toFile)
+  def copyFrom(src: InputLocation): this.type = { src.copyTo(this); this }
   def copyFromAsSymlink(src: InputLocation) = Files.createSymbolicLink(toPath, src.toPath)
-  def copyFromAsHardLink(src: InputLocation, overwriteIfAlreadyExists: Boolean = false):this.type = {
+  def copyFromAsHardLink(src: InputLocation, overwriteIfAlreadyExists: Boolean = false): this.type = {
     if (overwriteIfAlreadyExists) {
       Files.createLink(toPath, src.toPath)
     } else {
@@ -225,16 +242,20 @@ trait OutputLocation extends BaseLocation {
 
 trait InOutLocation extends InputLocation with OutputLocation {
 }
+case class FileLocation(fileFullPath: String, append: Boolean = false) extends FileLocationLike {
+  def withAppend: this.type = this.copy(append = true).asInstanceOf[this.type]
+}
+trait FileLocationLike extends InOutLocation {
+  def fileFullPath: String
+  def append: Boolean
 
-case class FileLocation(fileFullPath: String, append: Boolean = false) extends InOutLocation {
   def raw = fileFullPath
   def asInput: InputLocation = this
   lazy val toFile: File = new File(fileFullPath)
   override def toPath: Path = Paths.get(fileFullPath)
   override def toInputStream: InputStream = new FileInputStream(toFile)
   def child(child: String): this.type = new FileLocation(toPath.resolve(child).toFile.getAbsolutePath).asInstanceOf[this.type]
-  def parent: FileLocation.this.type = new FileLocation(parentName).asInstanceOf[FileLocation.this.type]
-  def withAppend: this.type = this.copy(append = true).asInstanceOf[this.type]
+  def parent: FileLocationLike.this.type = new FileLocation(parentName).asInstanceOf[FileLocationLike.this.type]
   def size = toFile.length()
   //import org.raisercostin.util.MimeTypesUtils2
   //def mimeType = MimeTypesUtils2.getMimeType(toPath)
@@ -251,6 +272,7 @@ case class MemoryLocation(val memoryName: String) extends InputLocation with Out
   def child(child: String): this.type = ???
   def parent: this.type = ???
   def withAppend: this.type = ???
+  override def length: Long = outStream.size()
 }
 object ClassPathInputLocation {
   private def getDefaultClassLoader(): ClassLoader = {
@@ -273,10 +295,11 @@ object ClassPathInputLocation {
  * @see http://www.thinkplexx.com/learn/howto/java/system/java-resource-loading-explained-absolute-and-relative-names-difference-between-classloader-and-class-resource-loading
  */
 case class ClassPathInputLocation(initialResourcePath: String) extends InputLocation {
+  require(initialResourcePath != null)
   def raw = initialResourcePath
   import ClassPathInputLocation._
-  lazy val resourcePath = initialResourcePath.stripPrefix("/")
-  lazy val resource = getSpecialClassLoader.getResource(resourcePath)
+  val resourcePath = initialResourcePath.stripPrefix("/")
+  val resource = { val res = getSpecialClassLoader.getResource(resourcePath); require(res != null, s"Couldn't get a stream from $this"); res }
   override def toUrl: java.net.URL = resource
   override def exists = resource != null
   override def absolute: String = toUrl.toURI().getPath() //Try{toFile.getAbsolutePath()}.recover{case e:Throwable => Option(toUrl).map(_.toExternalForm).getOrElse("unfound classpath://" + resourcePath) }.get
@@ -315,9 +338,12 @@ case class ZipInputLocation(zip: InputLocation, entry: Option[java.util.zip.ZipE
   }
   override def list: Iterator[InputLocation] = Option(existing).map(_ => entries).getOrElse(Iterator()).map(entry => ZipInputLocation(zip, Some(entry)))
 
-  private lazy val rootzip = new java.util.zip.ZipFile(toFile)
+  private lazy val rootzip = new java.util.zip.ZipFile(Try{toFile}.getOrElse(Locations.temp.randomChild(name).copyFrom(zip).toFile))
+  //private lazy val rootzip = new java.util.zip.ZipInputStream(zip.toInputStream)
   import collection.JavaConverters._
   private lazy val entries = rootzip.entries.asScala
+  override def name = entry.map(_.getName).getOrElse(zip.name+"-unzipped")
+  override def unzip: ZipInputLocation = new ZipInputLocation(Locations.temp.randomChild(name).copyFrom(Locations.stream(toInputStream)), None)
 }
 
 case class StreamLocation(val inputStream: InputStream) extends InputLocation {
@@ -326,6 +352,34 @@ case class StreamLocation(val inputStream: InputStream) extends InputLocation {
   def parent: this.type = ???
   def toFile: File = ???
   override def toInputStream: InputStream = inputStream
+}
+case class UrlLocation(url: java.net.URL) extends InputLocation {
+  def raw = url.toExternalForm()
+  def child(child: String): this.type = ???
+  def parent: this.type = ???
+  def toFile: File = ???
+  import java.net._
+  override def length: Long = {
+    var conn: HttpURLConnection = null
+    try {
+      conn = url.openConnection().asInstanceOf[HttpURLConnection]
+      conn.setRequestMethod("HEAD")
+      conn.getInputStream
+      val len = conn.getContentLengthLong()
+      if(len<0) throw new RuntimeException("Invalid length received!")
+      len
+    } catch {
+      case e: java.io.IOException => -1
+    } finally {
+      conn.disconnect()
+    }
+  }
+  override def toInputStream: InputStream = url.openStream()
+}
+case class TempLocation(temp: File, append: Boolean = false) extends FileLocationLike {
+  def withAppend: this.type = this.copy(append = true).asInstanceOf[this.type]
+  def fileFullPath: String = temp.getAbsolutePath()
+  def randomChild(prefix: String, suffix: String = "") = new TempLocation(File.createTempFile(prefix, suffix, toFile))
 }
 object Locations {
   def classpath(resourcePath: String): ClassPathInputLocation =
@@ -340,7 +394,8 @@ object Locations {
     new FileLocation(file.getAbsolutePath()).child(subFile)
   def memory(memoryName: String): MemoryLocation =
     new MemoryLocation(memoryName)
-  //io.Source.fromInputStream(getClass.getResourceAsStream(source))
-  def apply(s: InputStream): StreamLocation = stream(s)
   def stream(stream: InputStream): StreamLocation = new StreamLocation(stream)
+  def url(url: java.net.URL): UrlLocation = new UrlLocation(url)
+  def temp: TempLocation = TempLocation(tmpdir)
+  private val tmpdir = new File(System.getProperty("java.io.tmpdir"))
 }

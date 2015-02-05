@@ -12,6 +12,8 @@ import org.joda.time.LocalDateTime
 import org.joda.time.format.DateTimeFormatter
 import org.joda.time.format.DateTimeFormat
 import scala.util.Try
+import com.thebuzzmedia.exiftool.ExifToolNew3
+import org.raisercostin.util.io.Locations
 trait Item {
   def prefix: String
   def tags: Map[String, String]
@@ -65,7 +67,9 @@ object raw {
 
     import com.thebuzzmedia.exiftool.RawExifTool
     import com.thebuzzmedia.exiftool.Feature
-    private val tool1helper = RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+    private val tool1helper = {
+      RawExifTool.Factory.create(Feature.STAY_OPEN, Feature.WINDOWS)
+    }
     def tool1: ExifToolService = tool1helper
     /*
     val tool2helper = CacheBuilder.newBuilder().weakValues()
@@ -182,7 +186,7 @@ object raw {
   private def discoverAdditionalLocations(discoverPairs: Boolean): InputLocation => Seq[(String, InputLocation)] = location => {
     val isMovie = Seq("avi", "mov").contains(location.extension.toLowerCase)
     val thm = if (discoverPairs && isMovie)
-      Stream("thm2", "THM", "thm") flatMap { ext => location.withExtension(_ => ext).existingOption.map(x => (ext, x)) } headOption
+      Stream("thm2", "THM", "thm") flatMap { ext => Try{location.withExtension(_ => ext).existingOption}.toOption.flatten.map(x => (ext, x)) } headOption
     else
       None
     val locations = thm ++: Seq(("", location))

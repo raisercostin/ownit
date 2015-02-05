@@ -1,7 +1,7 @@
 package org.raisercostin.tags
 
 object FormatAnalyser {
-  val constants = Seq("---XXX-IMG_XXXX","IMG", "MVI","---at-")
+  val constants = Seq("---XXX-IMG_XXXX","IMG", "MVI","---at-XXX--","---at-","+XXXX")
   val tagFileModificationDateTime = "fileModification"
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
   def cleanFormat(format: String) = {

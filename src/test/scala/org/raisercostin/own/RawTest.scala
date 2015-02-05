@@ -31,7 +31,247 @@ class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
     println(all.mkString("\n"))
     assertEquals("MOV", tags.fileExtension.get)
     assertEquals("${const:MVI}_${exifFileNumberMinor}.${fileExtension}", tags.analyse(file.name).get)
-    assertEquals(241, all.size)
+    assertEquals(240, all.size)
+    assertEquals("""compDetectedFormat
+compDetectedPathFormat
+dateTime
+dateTimeZone
+exifAEBBracketValue
+exifAESetting
+exifAFAreaHeights
+exifAFAreaMode
+exifAFAreaWidths
+exifAFAreaXPositions
+exifAFAreaYPositions
+exifAFImageHeight
+exifAFImageWidth
+exifAFPoint
+exifAFPointsInFocus
+exifAperture
+exifApertureValue
+exifAudioBitrate
+exifAudioBitsPerSample
+exifAudioChannels
+exifAudioChannels#THM
+exifAudioFormat
+exifAudioSampleRate
+exifAudioSampleRate#THM
+exifAutoExposureBracketing
+exifAutoISO
+exifAutoRotate
+exifAvgBitrate
+exifBalance
+exifBitDepth
+exifBitsPerSample
+exifBulbDuration
+exifCameraISO
+exifCameraTemperature
+exifCameraType
+exifCanonExposureMode
+exifCanonFirmwareVersion
+exifCanonFlashMode
+exifCanonImageHeight
+exifCanonImageSize
+exifCanonImageType
+exifCanonImageWidth
+exifCanonModelID
+exifCategories
+exifCircleOfConfusion
+exifColorComponents
+exifColorSpace
+exifCompatibleBrands
+exifComponentsConfiguration
+exifCompressedBitsPerPixel
+exifCompressorID
+exifCompressorVersion
+exifContinuousDrive
+exifContrast
+exifControlMode
+exifCreateDate
+exifCreateDate#THM
+exifCurrentTime
+exifCustomRendered
+exifDateStampMode
+exifDateTimeOriginal
+exifDigitalZoom
+exifDigitalZoomRatio
+exifDirectory
+exifDirectory#THM
+exifDriveMode
+exifDuration
+exifDuration#THM
+exifEasyMode
+exifEncodingProcess
+exifExifByteOrder
+exifExifImageHeight
+exifExifImageWidth
+exifExifToolVersion
+exifExifToolVersion#THM
+exifExifVersion
+exifExposureCompensation
+exifExposureMode
+exifExposureTime
+exifFNumber
+exifFOV
+exifFileAccessDate
+exifFileAccessDate#THM
+exifFileCreateDate
+exifFileCreateDate#THM
+exifFileModifyDate
+exifFileModifyDate#THM
+exifFileName
+exifFileName#THM
+exifFileNumber
+exifFileNumberMajor
+exifFileNumberMinor
+exifFilePermissions
+exifFilePermissions#THM
+exifFileSize
+exifFileSize#THM
+exifFileSource
+exifFileType
+exifFileType#THM
+exifFirmwareRevision
+exifFlash
+exifFlashActivity
+exifFlashBits
+exifFlashExposureComp
+exifFlashGuideNumber
+exifFlashOutput
+exifFlashpixVersion
+exifFocalLength
+exifFocalLength35efl
+exifFocalPlaneResolutionUnit
+exifFocalPlaneXResolution
+exifFocalPlaneXSize
+exifFocalPlaneYResolution
+exifFocalPlaneYSize
+exifFocalType
+exifFocalUnits
+exifFocusContinuous
+exifFocusDistanceLower
+exifFocusDistanceUpper
+exifFocusMode
+exifFocusRange
+exifFrameCount
+exifFrameRate
+exifGraphicsMode
+exifHandlerClass
+exifHandlerType
+exifHyperfocalDistance
+exifISO
+exifImageDescription
+exifImageHeight
+exifImageHeight#THM
+exifImageSize
+exifImageSize#THM
+exifImageStabilization
+exifImageUniqueID
+exifImageWidth
+exifImageWidth#THM
+exifIntelligentContrast
+exifInteropIndex
+exifInteropVersion
+exifLens
+exifLens35efl
+exifLensID
+exifLensType
+exifLightValue
+exifMIMEType
+exifMIMEType#THM
+exifMacroMode
+exifMajorBrand
+exifMake
+exifManualFlashOutput
+exifMatrixStructure
+exifMaxAperture
+exifMaxApertureValue
+exifMaxFocalLength
+exifMeasuredEV
+exifMediaCreateDate
+exifMediaDuration
+exifMediaHeaderVersion
+exifMediaModifyDate
+exifMediaTimeScale
+exifMeteringMode
+exifMinAperture
+exifMinFocalLength
+exifMinorVersion
+exifModel
+exifModifyDate
+exifModifyDate#THM
+exifMovieDataOffset
+exifMovieDataSize
+exifMovieHeaderVersion
+exifMyColorMode
+exifNDFilter
+exifNextTrackID
+exifNumAFPoints
+exifOpColor
+exifOpticalZoomCode
+exifOrientation
+exifOwnerName
+exifPosterTime
+exifPreferredRate
+exifPreferredVolume
+exifPreviewDuration
+exifPreviewTime
+exifPrimaryAFPoint
+exifQuality
+exifRecordMode
+exifRelatedImageHeight
+exifRelatedImageWidth
+exifResolutionUnit
+exifRotation
+exifRotation#THM
+exifSaturation
+exifScaleFactor35efl
+exifSceneCaptureType
+exifSelectionDuration
+exifSelectionTime
+exifSelfTimer
+exifSelfTimer2
+exifSensingMethod
+exifSequenceNumber
+exifSharpness
+exifShootingMode
+exifShutterSpeed
+exifShutterSpeedValue
+exifSlowShutter
+exifSourceImageHeight
+exifSourceImageWidth
+exifSpotMeteringMode
+exifTargetAperture
+exifTargetExposureTime
+exifThumbnailImageValidArea
+exifTimeScale
+exifTrackCreateDate
+exifTrackDuration
+exifTrackHeaderVersion
+exifTrackID
+exifTrackLayer
+exifTrackModifyDate
+exifTrackVolume
+exifUserComment
+exifVRDOffset
+exifValidAFPoints
+exifVideoCodec
+exifVideoFrameRate
+exifWhiteBalance
+exifXResolution
+exifXResolution#THM
+exifYCbCrPositioning
+exifYCbCrSubSampling
+exifYResolution
+exifYResolution#THM
+exifZoomSourceWidth
+exifZoomTargetWidth
+fileCreated
+fileCreated#THM
+fileExtension
+fileExtension#THM
+fileModification
+fileModification#THM""".replaceAll("\\s+","\n"), all.map(_._1).mkString("\n"))
     //val tags2 = raw2.BestExifExtractor.extract(Locations.classpath("MVI_2366.MOV")).get.tags.toSeq.sortBy(_._1)
     //println(tags.mkString("\n"))
     //    assertEquals(214, tags2.size)
@@ -94,24 +334,24 @@ class RawTest extends FunSuite with BeforeAndAfterAll with TryValues {
     val tags = raw.loadExifTags(src)
     val fileNameFormat = tags.analyse(src.name).get
     assertEquals("time6-${const:MVI}_${exifFileNumberMinor}.${fileExtension}", fileNameFormat)
-    assertEquals("time6",FormatAnalyser.cleanFormat(fileNameFormat))
+    assertEquals("time6", FormatAnalyser.cleanFormat(fileNameFormat))
     val variable = FormatAnalyser.cleanFormat(fileNameFormat)
-    val fileNamePattern =fileNameFormat.replaceAllLiterally(variable,"") 
-    assertEquals("-${const:MVI}_${exifFileNumberMinor}.${fileExtension}",fileNamePattern)
+    val fileNamePattern = fileNameFormat.replaceAllLiterally(variable, "")
+    assertEquals("-${const:MVI}_${exifFileNumberMinor}.${fileExtension}", fileNamePattern)
     val numberMinor = tags.fileNumberMinor.get
     val fileNumber = tags.fileNumber.get
     val delta = 10
     val range = numberMinor - delta to numberMinor + delta
       //search for a jpg that has a counter slightly before the current exifFileNumber
       def nameMightContainNumberInRange(range: Range)(name: String) = range.find(x => name contains x.toString).isDefined
-      
+
     val files = src.asFile.parent.list.filter(_.extension.toLowerCase == "jpg").toList
     //(1 to delta).find(x )
-    val pairs = files.//filter { file => nameMightContainNumberInRange(range)(file.name) }.
-    	map{x=>println(s"fileNumber in $x");(x,raw.loadExifTags(x).fileNumber.map{_-fileNumber})}.
-    	filter(x=>x._2.getOrElse(0)!=0).
-    	map(x=>(x._1,x._2.get.abs)).
-    	toList.sortBy(_._2)
+    val pairs = files. //filter { file => nameMightContainNumberInRange(range)(file.name) }.
+      map { x => println(s"fileNumber in $x"); (x, raw.loadExifTags(x).fileNumber.map { _ - fileNumber }) }.
+      filter(x => x._2.getOrElse(0) != 0).
+      map(x => (x._1, x._2.get.abs)).
+      toList.sortBy(_._2)
     assertEquals("", pairs.mkString("\n"))
   }
 }
