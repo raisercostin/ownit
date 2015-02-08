@@ -29,17 +29,20 @@ object Renamer {
   def main2(args: Array[String]) = {
     args match {
       case Array(from: String, to: String, "-debug") =>
-        ownPics(from, to, true)
+        organize(Some(from), to, true)
       case Array(from: String, "-debug") =>
-        ownPics(from, "-proposed", true)
+        organize(Some(from), "-proposed", true)
+      case Array(from: String, "-gui") =>
+        RenamerGUI.main(args)
       case Array(from: String, to: String) =>
-        ownPics(from, to)
+        organize(Some(from), to)
       case Array(from: String) =>
-        ownPics(from, "-proposed")
+        organize(Some(from))
+      case Array() =>
+        RenamerGUI.main(args)
       case _ =>
-        println(s"""You must give two parameters and you gave ${args.size}: ${args.toList.mkString("\n")}. \nThe folder (that will NEVER be changed) with your media(pics,movies) files and the folder where you want to get a proposal of new names based on EXIF information.""")
+        organize(None, args = args)
     }
-    println("done.")
   }
 
   def test = {
@@ -67,10 +70,16 @@ object Renamer {
       }
     }
   }
+  def organize(fromPath: Option[String], toRelativeOrAbsolute: String = "-proposed", debug: Boolean = false, filter: Option[String] = None, args: Array[String] = Array()): Unit =
+    fromPath match {
+      case Some(fromPath2) => organize2(fromPath2, toRelativeOrAbsolute, debug, filter)
+      case _ =>
+        println(s"""You must give two parameters and you gave ${args.size}: ${args.toList.mkString("\n")}. \nThe folder (that will NEVER be changed) with your media(pics,movies) files and the folder where you want to get a proposal of new names based on EXIF information.""")
+    }
 
-  def ownPics(fromPath: String, toRelativeOrAbsolute: String, debug: Boolean = false, filter: Option[String] = None) = try {
+  def organize2(fromPath: String, toRelativeOrAbsolute: String = "-proposed", debug: Boolean = false, filter: Option[String] = None) = try {
     //if(debug)
-    	println(s"organize [$fromPath] -> [$toRelativeOrAbsolute]")
+    println(s"organize [$fromPath] -> [$toRelativeOrAbsolute]")
     val srcExifTool = Locations.classpath("exiftool2.exe")
     val cities = Locations.classpath("cities1000.zip")
     println(cities)
@@ -104,6 +113,7 @@ object Renamer {
           println(f.getMessage)
     }
     */
+    println("done.")
   }
 
   def process(src: FileLocation, from: FileLocation, placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(debug: Boolean)(implicit devices: DevicesDao) = {

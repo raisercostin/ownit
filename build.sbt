@@ -5,7 +5,7 @@ organization := "org.raisercostin"
 
 name := "ownit"
 
-version := "0.1"
+version := "0.2"
 
 scalaVersion := "2.10.2"
 
@@ -25,6 +25,8 @@ libraryDependencies ++= Seq(
 	//for guava
 	,"com.google.code.findbugs" % "jsr305" % "2.0.3"
 	//,"org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3"
+    ,"com.netflix.rxjava" % "rxjava-scala" % "0.15.0"
+	,"org.scala-lang" % "scala-swing" % scalaVersion.value
 )
 
 sbtPlugin := true
@@ -49,7 +51,10 @@ resolvers ++= Seq(
 
 //EclipseKeys.withSource := true
 
-oneJarSettings
+
+com.github.retronym.SbtOneJar.oneJarSettings
+
+artifact in oneJar <<= moduleName(x=>Artifact("organize"))
 
 mainClass := Some("raisercostin.apps.Renamer")
 

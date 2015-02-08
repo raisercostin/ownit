@@ -1,1 +1,1 @@
-java -jar target\scala-2.10\sbt-0.13\ownit-0.1-one-jar.jar %*
+java -jar target\scala-2.10\sbt-0.13\organize-0.1.jar %*

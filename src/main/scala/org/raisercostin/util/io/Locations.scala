@@ -158,6 +158,7 @@ trait InputLocation extends BaseLocation {
     existing(toSource).getLines
   def copyToIfNotExists(dest: OutputLocation) = {dest.existingOption.map(_.copyFrom(this));this}
   def copyTo(dest: OutputLocation) = {
+    dest.mkdirOnParentIfNecessary
     val source = toInputStream
     try {
       val output = dest.toOutputStream
@@ -299,7 +300,11 @@ case class ClassPathInputLocation(initialResourcePath: String) extends InputLoca
   def raw = initialResourcePath
   import ClassPathInputLocation._
   val resourcePath = initialResourcePath.stripPrefix("/")
-  val resource = { val res = getSpecialClassLoader.getResource(resourcePath); require(res != null, s"Couldn't get a stream from $this"); res }
+  val resource = { 
+    val res = getSpecialClassLoader.getResource(resourcePath);
+    require(res != null, s"Couldn't get a stream from $this"); 
+    res 
+  }
   override def toUrl: java.net.URL = resource
   override def exists = resource != null
   override def absolute: String = toUrl.toURI().getPath() //Try{toFile.getAbsolutePath()}.recover{case e:Throwable => Option(toUrl).map(_.toExternalForm).getOrElse("unfound classpath://" + resourcePath) }.get
