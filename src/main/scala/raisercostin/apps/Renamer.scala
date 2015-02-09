@@ -139,22 +139,28 @@ object Renamer {
       }
       devices.checkDeviceId(tags)
       println("\tdetected format\t" + tags.analyse(src.name).get)
+
+      val standardNameXXXX = dateAnalyser + "$exifFileNumberMajor|(---%%|---XXX)$exifFileNumberMinor|XXXX(-IMG_%%)$compClosestLocation|XXX(---at-%%)$compRemaining|(--%%|)$fileExtension(.%%)"
+      val standardName = dateAnalyserNoXXXX + "$exifFileNumberMajor|(---%%|)$exifFileNumberMinor|(-IMG_%%|)$compClosestLocation|(---at-%%|)$compRemaining|(--%%|)$fileExtension(.%%)"
+
       val allRenamers = Seq(
-        Formatter("flatWithXX",_=>dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)", false),
-        Formatter("flat",_=>dateAnalyserNoXXXX + "$exifFileNumberMajor|(---%%|)$exifFileNumberMinor|(-IMG_%%|)$compClosestLocation|(---at-%%--|)$compRemaining|(%%|)$fileExtension(.%%)", false),
-        Formatter("standardWithXX",_=>dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)", true),
-        Formatter("standard",_=>dateAnalyserNoXXXX + "$exifFileNumberMajor|(---%%|)$exifFileNumberMinor|(-IMG_%%|)$compClosestLocation|(---at-%%|)$compRemaining|(--%%|)$fileExtension(.%%)", true),
-        Formatter("byYear",tags=>tags.dateGroup + "(yyyy)|(XXXX)" + Locations.FILE_SEPARATOR + dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)", false),
-        Formatter("byYearMonth",tags=>tags.dateGroup + "(yyyy)|(XXXX)-" + tags.dateGroup + "(MM-MMMM)|(XX)" + Locations.FILE_SEPARATOR + dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)", false),
-        Formatter("byCounter",_=>"$exifFileNumberMajor|(%%|)$exifFileNumberMinor|(-%%-|)$compRemaining|(%%|)$fileExtension(.%%)", false),
-        Formatter("byCounterKeepStructure",_=>"$exifFileNumberMajor|(%%|)$exifFileNumberMinor|(-%%-|)$compRemaining|(%%|)$fileExtension(.%%)", true))
-      allRenamers.foreach {formatter=>
-          val name = formatter.folder
-          val newDestFile = formatter.proposal(placeBadFiles.withBaseName(_ + "-" + name), placeGoodFiles.child(name))(from, src, tags)
-          val ANSI_BACK = "" //"\u001B[1F";
-          //println(ANSI_BACK + "\t"+name.padTo(30,' ')+"> smartcopy to\t" + newDestFile.absolute)
-          println(ANSI_BACK + "\t" + name.padTo(30, ' ') + "-> \t" + newDestFile.relativeTo(placeGoodFiles))
-          src.copyAsHardLink(newDestFile)
+        Formatter("flat-XXXX", _ => standardNameXXXX, false),
+        Formatter("flat", _ => standardName, false),
+        Formatter("standard", _ => standardName, true),
+        Formatter("standard-XXXX", _ => standardNameXXXX, true),
+        Formatter("byYear", tags => tags.dateGroup + "|(yyyy|XXXX)" + Locations.FILE_SEPARATOR + standardName, false),
+        Formatter("byYear-XXXX", tags => tags.dateGroup + "|(yyyy|XXXX)" + Locations.FILE_SEPARATOR + standardNameXXXX, false),
+        Formatter("byYearMonth", tags => tags.dateGroup + "|(yyyy|XXXX)-" + tags.dateGroup + "|(MM-MMMM|XX)" + Locations.FILE_SEPARATOR + standardName, false),
+        Formatter("byYearMonth-XXXX", tags => tags.dateGroup + "(yyyy)|(XXXX)-" + tags.dateGroup + "(MM-MMMM)|(XX)" + Locations.FILE_SEPARATOR + standardNameXXXX, false),
+        Formatter("byCounter", _ => "$exifFileNumberMajor|(%%|)$exifFileNumberMinor|(-%%-|)$compRemaining|(%%|)$fileExtension(.%%)", false),
+        Formatter("byCounterKeepStructure", _ => "$exifFileNumberMajor|(%%|)$exifFileNumberMinor|(-%%-|)$compRemaining|(%%|)$fileExtension(.%%)", true))
+      allRenamers.foreach { formatter =>
+        val name = formatter.folder
+        val newDestFile = formatter.proposal(placeBadFiles.withBaseName(_ + "-" + name), placeGoodFiles.child(name))(from, src, tags)
+        val ANSI_BACK = "" //"\u001B[1F";
+        //println(ANSI_BACK + "\t"+name.padTo(30,' ')+"> smartcopy to\t" + newDestFile.absolute)
+        println(ANSI_BACK + "\t" + name.padTo(30, ' ') + "-> \t" + newDestFile.relativeTo(placeGoodFiles))
+        src.copyAsHardLink(newDestFile)
       }
     }
     newName.recover {
@@ -163,7 +169,7 @@ object Renamer {
         Failure(e)
     }
   }
-  case class Formatter(folder:String, interpolator: (ExifTags)=>String, keepStructure: Boolean) {
+  case class Formatter(folder: String, interpolator: (ExifTags) => String, keepStructure: Boolean) {
     def proposal(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
       val newName = tags.interpolate(interpolator(tags)).get
       val imageOrVideo = tags.isImage || tags.isVideo
@@ -175,17 +181,17 @@ object Renamer {
       place.child(baseName).mkdirOnParentIfNecessary.renamedIfExists
     }
   }
-//
-//  def standardizeName(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
-//    val newName = tags.interpolate(dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
-//    val imageOrVideo = tags.isImage || tags.isVideo
-//    val badName = newName.contains("XXXX-XX-XX--XX-XX-XX")
-//    val badChange = badName && imageOrVideo
-//    val nameChanged = !badName && imageOrVideo
-//    val dest = if (badChange) placeBadFiles else placeGoodFiles
-//    val baseName = if (nameChanged) newName else src.name
-//    dest.child(src.relativeTo(from)).withName(_ => baseName).mkdirOnParentIfNecessary.renamedIfExists
-//  }
+  //
+  //  def standardizeName(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
+  //    val newName = tags.interpolate(dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get
+  //    val imageOrVideo = tags.isImage || tags.isVideo
+  //    val badName = newName.contains("XXXX-XX-XX--XX-XX-XX")
+  //    val badChange = badName && imageOrVideo
+  //    val nameChanged = !badName && imageOrVideo
+  //    val dest = if (badChange) placeBadFiles else placeGoodFiles
+  //    val baseName = if (nameChanged) newName else src.name
+  //    dest.child(src.relativeTo(from)).withName(_ => baseName).mkdirOnParentIfNecessary.renamedIfExists
+  //  }
 
   def fileWildcard(filter: String, file: String): Boolean = {
     val regex = "^" + filter.replace("?", ".?").replace("*", ".*?") + "$"

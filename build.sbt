@@ -56,6 +56,8 @@ com.github.retronym.SbtOneJar.oneJarSettings
 
 artifact in oneJar <<= moduleName(x=>Artifact("organize"))
 
+mainClass in oneJar := Some("raisercostin.apps.Renamer")
+
 mainClass := Some("raisercostin.apps.Renamer")
 
 unmanagedSourceDirectories in Compile := (scalaSource in Compile).value :: Nil
