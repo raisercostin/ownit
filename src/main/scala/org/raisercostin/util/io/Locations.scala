@@ -22,24 +22,25 @@ import java.nio.charset.StandardCharsets
 import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
-import Constants._
 import java.util.regex.Pattern
 import scala.util.Failure
 import org.apache.commons.io.IOUtils
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.Files
 import java.security.AccessController
+import java.io.FileSystem
 
-private object Constants {
-  val FILE_SEPARATOR = File.separator
-}
-
+import Locations._
 trait NavigableLocation {
   val logger = org.slf4j.LoggerFactory.getLogger("locations")
   def child(child: String): this.type
   def parent: this.type
   def withParent(process: (this.type) => Any): this.type = {
     process(parent)
+    this
+  }
+  def withSelf(process: (this.type) => Any): this.type = {
+    process(this)
     this
   }
   def descendant(childs: Seq[String]): this.type = if (childs.isEmpty) this else child(childs.head).descendant(childs.tail)
@@ -110,6 +111,10 @@ trait BaseLocation extends NavigableLocation {
       }
     findUniqueName(this)
   }
+  def nonExisting(process: (this.type) => Any): this.type = {
+    if (!exists) process(this)
+    this
+  }
 
   def existing: this.type =
     if (toFile.exists)
@@ -134,8 +139,8 @@ trait BaseLocation extends NavigableLocation {
     //      throw new RuntimeException("[" + this + "] doesn't have next!")
     source
   }
-  def inspect(message: (this.type) => String): this.type = {
-    logger.info(message(this))
+  def inspect(message: (this.type) => Any): this.type = {
+    message(this)
     this
   }
   def withBaseName(baseNameSupplier: String => String): this.type = parent.child(withExtension2(baseNameSupplier(baseName), extension))
@@ -156,7 +161,7 @@ trait InputLocation extends BaseLocation {
     using(toInputStream)(inputStream => op(inputStream))
   def readLines =
     existing(toSource).getLines
-  def copyToIfNotExists(dest: OutputLocation) = {dest.existingOption.map(_.copyFrom(this));this}
+  def copyToIfNotExists(dest: OutputLocation) = { dest.existingOption.map(_.copyFrom(this)); this }
   def copyTo(dest: OutputLocation) = {
     dest.mkdirOnParentIfNecessary
     val source = toInputStream
@@ -300,10 +305,10 @@ case class ClassPathInputLocation(initialResourcePath: String) extends InputLoca
   def raw = initialResourcePath
   import ClassPathInputLocation._
   val resourcePath = initialResourcePath.stripPrefix("/")
-  val resource = { 
+  val resource = {
     val res = getSpecialClassLoader.getResource(resourcePath);
-    require(res != null, s"Couldn't get a stream from $this"); 
-    res 
+    require(res != null, s"Couldn't get a stream from $this");
+    res
   }
   override def toUrl: java.net.URL = resource
   override def exists = resource != null
@@ -343,11 +348,11 @@ case class ZipInputLocation(zip: InputLocation, entry: Option[java.util.zip.ZipE
   }
   override def list: Iterator[InputLocation] = Option(existing).map(_ => entries).getOrElse(Iterator()).map(entry => ZipInputLocation(zip, Some(entry)))
 
-  private lazy val rootzip = new java.util.zip.ZipFile(Try{toFile}.getOrElse(Locations.temp.randomChild(name).copyFrom(zip).toFile))
+  private lazy val rootzip = new java.util.zip.ZipFile(Try { toFile }.getOrElse(Locations.temp.randomChild(name).copyFrom(zip).toFile))
   //private lazy val rootzip = new java.util.zip.ZipInputStream(zip.toInputStream)
   import collection.JavaConverters._
   private lazy val entries = rootzip.entries.asScala
-  override def name = entry.map(_.getName).getOrElse(zip.name+"-unzipped")
+  override def name = entry.map(_.getName).getOrElse(zip.name + "-unzipped")
   override def unzip: ZipInputLocation = new ZipInputLocation(Locations.temp.randomChild(name).copyFrom(Locations.stream(toInputStream)), None)
 }
 
@@ -371,7 +376,7 @@ case class UrlLocation(url: java.net.URL) extends InputLocation {
       conn.setRequestMethod("HEAD")
       conn.getInputStream
       val len = conn.getContentLengthLong()
-      if(len<0) throw new RuntimeException("Invalid length received!")
+      if (len < 0) throw new RuntimeException("Invalid length received!")
       len
     } catch {
       case e: java.io.IOException => -1
@@ -386,21 +391,35 @@ case class TempLocation(temp: File, append: Boolean = false) extends FileLocatio
   def fileFullPath: String = temp.getAbsolutePath()
   def randomChild(prefix: String, suffix: String = "") = new TempLocation(File.createTempFile(prefix, suffix, toFile))
 }
+/**
+ * file(*) - will reffer to the absolute path passed as parameter or to a file relative to current directory new File(".") which should be the same as System.getProperty("user.dir").
+ */
 object Locations {
   def classpath(resourcePath: String): ClassPathInputLocation =
     new ClassPathInputLocation(resourcePath)
-  def file(fileFullPath: String): FileLocation =
-    new FileLocation(fileFullPath)
   def file(path: Path): FileLocation =
     file(path.toFile)
+  def file(fileFullPath: String): FileLocation =
+    createAbsoluteFile(fileFullPath)
   def file(file: File): FileLocation =
-    new FileLocation(file.getAbsolutePath())
+    createAbsoluteFile(file.getAbsolutePath())
   def file(file: File, subFile: String): FileLocation =
-    new FileLocation(file.getAbsolutePath()).child(subFile)
+    createAbsoluteFile(file.getAbsolutePath()).child(subFile)
+  def file(fileFullPath: String, optionalParent: BaseLocation): FileLocation =
+    file(if (isAbsolute(fileFullPath)) fileFullPath else optionalParent.absolute + fileFullPath)
+
+  private def isAbsolute(path: String) = new File(path).isAbsolute()
+  private def createAbsoluteFile(path: String) = {
+    if (isAbsolute(path))
+      new FileLocation(path)
+    else
+      new FileLocation(new File(path).getAbsolutePath())
+  }
   def memory(memoryName: String): MemoryLocation =
     new MemoryLocation(memoryName)
   def stream(stream: InputStream): StreamLocation = new StreamLocation(stream)
   def url(url: java.net.URL): UrlLocation = new UrlLocation(url)
   def temp: TempLocation = TempLocation(tmpdir)
   private val tmpdir = new File(System.getProperty("java.io.tmpdir"))
+  val FILE_SEPARATOR = File.separator
 }

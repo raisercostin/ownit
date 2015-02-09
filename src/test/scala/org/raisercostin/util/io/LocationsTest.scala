@@ -83,4 +83,16 @@ c/e/
 c/e/f.txt""".replaceAll("\r", ""),
       Locations.classpath("location.zip").unzip.child("c/subzip.zip").unzip.list.map{_.name}.mkString("\n"))
   }
+  test("parent of relative file"){
+    import java.io.File
+    assertTrue(new java.io.File(".").getCanonicalPath.length > "src".length)
+    assertTrue(new File("src").getAbsolutePath().length > "src".length)
+    assertNotNull(Locations.file("src").toPath.getParent())
+    assertNotNull(Locations.file("src").toFile)
+    assertNotNull(Locations.file("src").toFile.toString)
+    assertNotNull(Locations.file("src").toPath)
+    assertNotNull(Locations.file("src").toFile.getParentFile)
+    assertNotNull(Locations.file("src").parentName)
+    assertNotNull(Locations.file("src").parent)
+  }
 }
