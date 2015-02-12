@@ -1,4 +1,4 @@
-package gui
+package org.raisercostin.util.gui
 
 import java.io._
 import java.awt._
@@ -99,7 +99,7 @@ class MessageConsole(private var textComponent: JTextComponent, private var isAp
           textComponent.setCaretPosition(0)
         }
       } catch {
-        case ble: BadLocationException => 
+        case ble: BadLocationException =>
       }
       if (printStream != null) {
         printStream.print(line)

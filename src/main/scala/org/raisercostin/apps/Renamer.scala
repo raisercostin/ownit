@@ -1,4 +1,4 @@
-package raisercostin.apps
+package org.raisercostin.apps
 import scala.util.Try
 import java.io.File
 import scala.util.Success
@@ -229,69 +229,6 @@ object Renamer {
       a + "caused by " + dump(t.getCause())
     } else {
       a
-    }
-  }
-
-  def main2(filename: String) {
-    val file = Locations.file(filename).toFile
-    println(file.getAbsolutePath)
-
-    import org.apache.sanselan.{ ImageReadException, Sanselan }
-    import org.apache.sanselan.common.{ IImageMetadata, RationalNumber }
-    import org.apache.sanselan.formats.jpeg.JpegImageMetadata
-    import org.apache.sanselan.formats.tiff.{ TiffField, TiffImageMetadata }
-    import org.apache.sanselan.formats.tiff.constants.{ ExifTagConstants, GPSTagConstants, TagInfo, TiffConstants, TiffTagConstants }
-    import scala.collection.JavaConversions._
-    val metadata = Sanselan.getMetadata(file)
-      def printTagValue(metadata: JpegImageMetadata, tagInfo: TagInfo): Unit = {
-        val field = metadata.findEXIFValue(tagInfo)
-        field match {
-          case null => println("        (" + tagInfo.name + " not found.)")
-          case _ => println("        " + tagInfo.name + ": " + field.getValueDescription())
-        }
-      }
-
-    println("file:" + file.getPath())
-
-    if (metadata == null) {
-      println("\tNo EXIF metadata was found")
-    }
-
-    if (metadata.isInstanceOf[JpegImageMetadata]) {
-      val jpegMetadata = metadata.asInstanceOf[JpegImageMetadata]
-
-      println("  -- Standard EXIF Tags")
-      printTagValue(jpegMetadata, TiffTagConstants.TIFF_TAG_XRESOLUTION)
-      printTagValue(jpegMetadata, TiffTagConstants.TIFF_TAG_DATE_TIME)
-      printTagValue(jpegMetadata, ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL)
-      printTagValue(jpegMetadata, ExifTagConstants.EXIF_TAG_CREATE_DATE)
-      printTagValue(jpegMetadata, ExifTagConstants.EXIF_TAG_ISO)
-      printTagValue(jpegMetadata, ExifTagConstants.EXIF_TAG_SHUTTER_SPEED_VALUE)
-      printTagValue(jpegMetadata, ExifTagConstants.EXIF_TAG_APERTURE_VALUE)
-      printTagValue(jpegMetadata, ExifTagConstants.EXIF_TAG_BRIGHTNESS_VALUE)
-      printTagValue(jpegMetadata, GPSTagConstants.GPS_TAG_GPS_LATITUDE_REF)
-      printTagValue(jpegMetadata, GPSTagConstants.GPS_TAG_GPS_LATITUDE)
-      printTagValue(jpegMetadata, GPSTagConstants.GPS_TAG_GPS_LONGITUDE_REF)
-      printTagValue(jpegMetadata, GPSTagConstants.GPS_TAG_GPS_LONGITUDE)
-
-      // simple interface to GPS data
-      println("  -- GPS Info")
-      val exifMetadata = jpegMetadata.getExif()
-      if (exifMetadata != null) {
-        val gpsInfo = exifMetadata.getGPS()
-        if (gpsInfo != null) {
-          val longitude = gpsInfo.getLongitudeAsDegreesEast()
-          val latitude = gpsInfo.getLatitudeAsDegreesNorth()
-
-          println("        GPS Description: " + gpsInfo)
-          println("        GPS Longitude (Degrees East): " + longitude)
-          println("        GPS Latitude (Degrees North): " + latitude)
-        }
-      }
-
-      println("  -- All EXIF info")
-      jpegMetadata.getItems().foreach(item => println("        " + item))
-      println("")
     }
   }
 }

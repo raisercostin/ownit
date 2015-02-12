@@ -1,11 +1,11 @@
-package raisercostin.apps
+package org.raisercostin.apps
 
 import scala.swing._
 import scala.swing.BorderPanel.Position._
 import event._
 import java.awt.{ Color, Graphics2D }
 import scala.util.Random
-import gui.MessageConsole
+import org.raisercostin.util.gui.MessageConsole
 object RenamerGUI extends SimpleSwingApplication {
   import javax.swing.UIManager
   UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())

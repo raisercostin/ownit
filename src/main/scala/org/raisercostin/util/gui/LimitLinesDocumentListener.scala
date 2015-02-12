@@ -1,4 +1,4 @@
-package gui
+package org.raisercostin.util.gui
 
 import javax.swing._
 import javax.swing.event._
