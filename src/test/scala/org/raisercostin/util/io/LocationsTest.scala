@@ -3,6 +3,7 @@ import org.scalatest._
 import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
+import scala.util.Try
 
 @RunWith(classOf[JUnitRunner])
 class LocationsTest extends FunSuite {
@@ -81,9 +82,9 @@ a.txt
 b.txt
 c/e/
 c/e/f.txt""".replaceAll("\r", ""),
-      Locations.classpath("location.zip").unzip.child("c/subzip.zip").unzip.list.map{_.name}.mkString("\n"))
+      Locations.classpath("location.zip").unzip.child("c/subzip.zip").unzip.list.map { _.name }.mkString("\n"))
   }
-  test("parent of relative file"){
+  test("parent of relative file") {
     import java.io.File
     assertTrue(new java.io.File(".").getCanonicalPath.length > "src".length)
     assertTrue(new File("src").getAbsolutePath().length > "src".length)
@@ -94,5 +95,15 @@ c/e/f.txt""".replaceAll("\r", ""),
     assertNotNull(Locations.file("src").toFile.getParentFile)
     assertNotNull(Locations.file("src").parentName)
     assertNotNull(Locations.file("src").parent)
+  }
+  test("parent of relative location") {
+    assertEquals("2013", Locations.relative("""2013\2013-05-01 - trip to Monschau""").parentName)
+    assertEquals("""2013\some space\second space""", Locations.relative("""2013\2013-05-01 - trip to Monschau""").parent.child("some space").child("second space").path)
+    Locations.file("""d:\personal\photos-tofix\2013\").child("2013-05-01 - trip to Monschau""")
+    assertEquals("""D:\personal\work\ownit\.\2013""", Locations.file(".").child(Locations.relative("""2013\2013-05-01 - trip to Monschau""")).parentName)
+  }
+  test("bug with trailing child fiels") {
+    import org.scalatest.Matchers._
+    Try { Locations.file(""".""").child("2013-05-01 - trip to ") }.toString should startWith("Failure(java.lang.IllegalArgumentException: requirement failed: Child [2013-05-01 - trip to ] has trailing spaces)")
   }
 }

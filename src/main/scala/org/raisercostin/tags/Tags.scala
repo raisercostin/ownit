@@ -24,4 +24,6 @@ case class Tags(tags: Map[String, String]) {
   def asDateTime(value: String):Try[DateTime] = Formats.extractDateTime(value)
   def asDateTimeZone(value: String):Try[DateTimeZone] = Formats.extractDateTimeZone(value)
   def asLocalDateTime(value: String):Try[LocalDateTime] = Formats.extractLocalDateTime(value)
+  
+  def cleanFormat(pattern:String):String = FormatAnalyser.cleanFormat(pattern)
 }

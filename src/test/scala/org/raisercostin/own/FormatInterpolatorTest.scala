@@ -76,6 +76,7 @@ class FormatInterpolatorTest extends FunSuite with BeforeAndAfterAll with TryVal
     val tags = FormatInterpolator(1.to(10).map(i=>"key"+i->("value"+i)).toMap)
     assertEquals(None,tags("$keyA").toOption)
     assertEquals("value1",tags("$key1").get)
+    assertEquals("value1_",tags("$key1_").get)
     assertEquals("value1",tags("$keyA|$key1").get)
     assertEquals("value1",tags("$keyA|$keyB|$keyC|$key1").get)
     assertEquals("value2",tags("$keyA|value2").get)

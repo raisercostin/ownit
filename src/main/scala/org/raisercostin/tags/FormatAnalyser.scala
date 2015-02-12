@@ -1,18 +1,23 @@
 package org.raisercostin.tags
 
 object FormatAnalyser {
-  val constants = Seq("---XXX-IMG_XXXX","IMG", "MVI","---at-XXX--","---at-","+XXXX")
+  val constants = Seq("---XXX-IMG_XXXX", "IMG", "MVI", "---at-XXX--XXX", "---at-XXX--", "---at-", "+XXXX", "--XXX", "-XXX","XXX","--+XXXX-- ")
   val tagFileModificationDateTime = "fileModification"
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
   def cleanFormat(format: String) = {
     //this assumes that usually after $ variable a separator might come
-    var result = format.replaceAll("""\$\{[^}]+\}[._-]?""", "")
+    var result = format
+    result = result.replaceAll("""\$\{[^}]+\}[._-]?""", "")
+    result = result.replaceAll("""\$[a-zA-Z0-9#|]+\([^)]+\)""", "")
+    result = result.replaceAll("""\$[a-zA-Z0-9#|]+""", "")
     result = result.replaceAll("^[._-]+", "")
     result = result.replaceAll("[._-]+$", "")
+    result = result.trim
     result
   }
   //exifFileModifyDate might be wrong but still useful
   val dateAnalyser = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S'+XXXX')|$exifFileModifyDate(%Y-%m-%d--%H-%M-%SZ)|(XXXX-XX-XX--XX-XX-XX+XXXX)"
+  val dateAnalyserNoFormat = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate"
   val dateAnalyserNoXXXX = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S)|$exifFileModifyDate|(%Y-%m-%d--%H-%M-%SZ|)"
   val localDateTimeAnalyser = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate(" + Formats.localDateTimeInternalExifFormatterPattern + ")"
 }
@@ -30,6 +35,9 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
 
   def analyse(pattern: String, constants: Seq[String] = constants): String = {
     var result = pattern
+    val interp = FormatInterpolator(tags)
+    result = replaceInterpolated(result, interp, "$exifFileNumberMajor_" + dateAnalyserNoFormat + "(MMdd)")
+
     var message = List[String]()
 
       def check(date1: Try[LocalDateTime], prefix: String): Boolean = {
@@ -90,13 +98,20 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
     result = extractTagFromString(result, "fileExtension")
     result = extractTagFromString(result, "dateTimeZone", Tags(tags).getDateTimeZone("dateTimeZone").map { Formats.toSimplified })
     result = extractTagFromString(result, "compClosestLocation")
-    constants.zipWithIndex.map { case (constant,index) =>
-      result = extractConstantFromString(result, constant, index)
+    constants.zipWithIndex.map {
+      case (constant, index) =>
+        result = extractConstantFromString(result, constant, index)
     }
-    constants.zipWithIndex.map { case (constant,index) =>
-      result = replaceFirstLiterally(result, "${const:" + index + "}", "${const:" + constant + "}")
+    constants.zipWithIndex.map {
+      case (constant, index) =>
+        result = replaceFirstLiterally(result, "${const:" + index + "}", "${const:" + constant + "}")
     }
     result
+  }
+
+  private def replaceInterpolated(text: String, interp: FormatInterpolator, format: String): String = {
+    val value = interp.apply(format)
+    value.map { replaceFirstLiterally(text, _, format) }.getOrElse(text)
   }
 
   private def extractDateFromString(text: String, date: LocalDateTime, prefix2: String, suffix: String = "+"): String = {
@@ -116,7 +131,7 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   }
   import java.util.regex.Pattern
   private def countSubstring(str: String, substr: String) = Pattern.quote(substr).r.findAllMatchIn(str).length
-  private def extractConstantFromString(text: String, constant: String,counter:Int): String = {
+  private def extractConstantFromString(text: String, constant: String, counter: Int): String = {
     replaceFirstLiterally(text, constant, "${const:" + counter + "}")
   }
   private def extractTagFromString(text: String, tag: String): String = extractTagFromString(text, tag, tags.get(tag))

@@ -53,40 +53,41 @@ import scala.util.Success
 //    case failure: NoSuccess => scala.util.Failure(new RuntimeException(failure.toString()))
 //  }
 //}
-object FormatInterpolator{
-    //    val matcher = java.util.regex.Pattern.compile("(?:(\\w)-?)+").matcher("a-b-c-d-e-f")
-    //    matcher.matches()
-    //    println(matcher.groupCount())
-    //    println(matcher.group(0))
-    //    println(matcher.group(1))
-//    val groupOfVariables = """((?:\w|[$#|])*)"""
-//    val groupOfFormatters = """\(([^)]+)\)"""
-//    val pattern1 = s"$groupOfVariables$groupOfFormatters[|]?"
-    //println(pattern1)
-    val variable = """(?:\$\w(?:\w|[#])*)"""
-    val constant = """(?:\w*)"""
-    val variables = s"""$variable(?:[|]$variable)*"""
-    val selector = s"""(?:$variables)"""//s"""($variables(?:[|]$constant)?)"""
-    val format = """(?:\(([^)]+)\))"""
-    val section = s"""(?:$selector$format?)"""
-    val finalSection = s"""(?:[|](?:(?:$constant$format)|$constant|$format))?"""
-    val sections = s"""$section(?:[|]$section)*$finalSection"""
+object FormatInterpolator {
+  //    val matcher = java.util.regex.Pattern.compile("(?:(\\w)-?)+").matcher("a-b-c-d-e-f")
+  //    matcher.matches()
+  //    println(matcher.groupCount())
+  //    println(matcher.group(0))
+  //    println(matcher.group(1))
+  //    val groupOfVariables = """((?:\w|[$#|])*)"""
+  //    val groupOfFormatters = """\(([^)]+)\)"""
+  //    val pattern1 = s"$groupOfVariables$groupOfFormatters[|]?"
+  //println(pattern1)
+  val letter = """[a-zA-Z0-9]"""
+  val variable = """(?:\$"""+letter+s"""(?:$letter|[#])*)"""
+  val constant = s"""(?:$letter*)"""
+  val variables = s"""$variable(?:[|]$variable)*"""
+  val selector = s"""(?:$variables)""" //s"""($variables(?:[|]$constant)?)"""
+  val format = """(?:\(([^)]+)\))"""
+  val section = s"""(?:$selector$format?)"""
+  val finalSection = s"""(?:[|](?:(?:$constant$format)|$constant|$format))?"""
+  val sections = s"""$section(?:[|]$section)*$finalSection"""
 
-    val nonEmptyConstant = """(?:\w+)"""
-    val fullSelector = s"""(?:[^(]+)"""
-    val fullSelectors= s"""$fullSelector(?:[|]$fullSelector?)*"""
-    val fullSection = s"""[|]?($fullSelectors?)$format?"""
-    //val fullSection = s"""(?:[|]?([^(]+)$format?)|(?:[|]$format)"""
-    
-//    val word = variable
-//    val simpleWord = """(\w(\w|[#])*)"""
-    //val patternAll = """(\$\w(\w|[#])*)(\|(\$\w(\w|[#])*))*\|?(\([^)]+\))?"""
-    //val patternAll2 = s"""$word(\\|$word)*(\\|$simpleWord)?$format?"""
-    val sectionsRegex = sections.r
-    val sectionRegex = fullSection.r
-//    println(s"sections=$sections")
-//    println(s"fullSelector=$fullSelector")
-//    println(s"fullSection=$fullSection")
+  val nonEmptyConstant = s"""(?:$letter+)"""
+  val fullSelector = s"""(?:[^(]+)"""
+  val fullSelectors = s"""$fullSelector(?:[|]$fullSelector?)*"""
+  val fullSection = s"""[|]?($fullSelectors?)$format?"""
+  //val fullSection = s"""(?:[|]?([^(]+)$format?)|(?:[|]$format)"""
+
+  //    val word = variable
+  //    val simpleWord = """(\w(\w|[#])*)"""
+  //val patternAll = """(\$\w(\w|[#])*)(\|(\$\w(\w|[#])*))*\|?(\([^)]+\))?"""
+  //val patternAll2 = s"""$word(\\|$word)*(\\|$simpleWord)?$format?"""
+  val sectionsRegex = sections.r
+  val sectionRegex = fullSection.r
+  //    println(s"sections=$sections")
+  //    println(s"fullSelector=$fullSelector")
+  //    println(s"fullSection=$fullSection")
 }
 case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
   import FormatInterpolator._
@@ -134,7 +135,7 @@ case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
   private def expandMultiple(selector: String, convertor: Option[String]): Try[String] = {
     import scala.collection.JavaConversions._
     import com.google.common.base.Splitter
-    val all: Iterable[String] = if(selector.isEmpty()) Seq("") else Splitter.on('|').split(selector)
+    val all: Iterable[String] = if (selector.isEmpty()) Seq("") else Splitter.on('|').split(selector)
     val convertors: List[String] = Splitter.on('|').trimResults().split(convertor.getOrElse("")).toList
     //println(s"expand[$all] with convertors[$convertors]")
     all.toStream.flatMap(extractValue).headOption match {

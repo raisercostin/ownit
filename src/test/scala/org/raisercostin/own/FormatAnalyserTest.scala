@@ -6,6 +6,7 @@ import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
 import org.raisercostin.tags.FormatAnalyser
+import org.raisercostin.tags.FormatInterpolator
 
 @RunWith(classOf[JUnitRunner])
 class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues {
@@ -39,6 +40,10 @@ class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues 
   }
   test("analyze format2") {
     assertEquals("aaaa${exifFileNumberMajor}${exifFileNumberMinor}bbb", analyse("aaaa4372366bbb").get)
+  }
+  test("analyze format using interpolator") {
+    assertEquals("Success(2015:01:06 11:44:08+0200)", FormatInterpolator(tags2)(FormatAnalyser.dateAnalyserNoFormat).toString)
+    assertEquals("$exifFileNumberMajor_$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#${fileExtension}|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate(MMdd).jpg", analyse("437_0106.jpg").get)
   }
 }
 

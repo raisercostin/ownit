@@ -34,6 +34,13 @@ import Locations._
 trait NavigableLocation {
   val logger = org.slf4j.LoggerFactory.getLogger("locations")
   def child(child: String): this.type
+  def child(childLocation: RelativeLocation): this.type = {
+    if (childLocation.isEmpty) {
+      this
+    } else {
+      child(childLocation.path)
+    }
+  }
   def parent: this.type
   def withParent(process: (this.type) => Any): this.type = {
     process(parent)
@@ -51,7 +58,8 @@ trait BaseLocation extends NavigableLocation {
   def name: String = FilenameUtils.getName(absolute)
   def path: String = FilenameUtils.getPath(absolute)
   def baseName: String = FilenameUtils.getBaseName(absolute)
-  def parentName: String = toFile.getParentFile.getAbsolutePath
+  def parentName: String = //toFile.getParentFile.getAbsolutePath
+    FilenameUtils.getFullPathNoEndSeparator(path)
   /**To read data you should read the inputstream*/
   def toUrl: java.net.URL = toFile.toURI.toURL
   def toFile: File
@@ -248,6 +256,20 @@ trait OutputLocation extends BaseLocation {
 
 trait InOutLocation extends InputLocation with OutputLocation {
 }
+trait RelativeLocationLike extends BaseLocation {
+  def relativePath: String
+  require(!relativePath.startsWith("/"))
+  override def toFile: File = ???
+  override def toPath: Path = ???
+  override def toInputStream: InputStream = ???
+  override def path = relativePath
+  override def absolute: String = relativePath
+  def raw: String = ???
+  def parent: this.type = new RelativeLocation(parentName).asInstanceOf[this.type]
+  def child(child: String): this.type = new RelativeLocation(relativePath + FILE_SEPARATOR + child).asInstanceOf[this.type]
+  def isEmpty: Boolean = relativePath.isEmpty
+}
+case class RelativeLocation(relativePath: String) extends RelativeLocationLike
 case class FileLocation(fileFullPath: String, append: Boolean = false) extends FileLocationLike {
   def withAppend: this.type = this.copy(append = true).asInstanceOf[this.type]
 }
@@ -255,30 +277,35 @@ trait FileLocationLike extends InOutLocation {
   def fileFullPath: String
   def append: Boolean
 
+  override def parentName: String = toFile.getParentFile.getAbsolutePath
   def raw = fileFullPath
   def asInput: InputLocation = this
   lazy val toFile: File = new File(fileFullPath)
   override def toPath: Path = Paths.get(fileFullPath)
   override def toInputStream: InputStream = new FileInputStream(toFile)
-  def child(child: String): this.type = new FileLocation(toPath.resolve(child).toFile.getAbsolutePath).asInstanceOf[this.type]
-  def parent: FileLocationLike.this.type = new FileLocation(parentName).asInstanceOf[FileLocationLike.this.type]
+  def child(child: String): this.type = new FileLocation(toPath.resolve(checkedChild(child)).toFile.getAbsolutePath).asInstanceOf[this.type]
+  //should not throw exception but return Try?
+  def checkedChild(child: String): String = { require(!child.endsWith(" "), "Child [" + child + "] has trailing spaces"); child }
+  def parent: this.type = new FileLocation(parentName).asInstanceOf[this.type]
   def size = toFile.length()
   //import org.raisercostin.util.MimeTypesUtils2
   //def mimeType = MimeTypesUtils2.getMimeType(toPath)
 }
-case class MemoryLocation(val memoryName: String) extends InputLocation with OutputLocation {
-  def raw = memoryName
+case class MemoryLocation(val memoryName: String) extends RelativeLocationLike with InputLocation with OutputLocation {
+  def relativePath: String = memoryName
+  override def raw = memoryName
   def asInput: InputLocation = this
   def append: Boolean = false
   //val buffer: Array[Byte] = Array()
   lazy val outStream = new ByteArrayOutputStream()
-  def toFile: File = ???
+  override def toFile: File = ???
   override def toOutputStream: OutputStream = outStream
   override def toInputStream: InputStream = new ByteArrayInputStream(outStream.toByteArray())
-  def child(child: String): this.type = ???
-  def parent: this.type = ???
+  //  def child(child: String): this.type = ???
+  //  def parent: this.type = ???
   def withAppend: this.type = ???
   override def length: Long = outStream.size()
+  override def mkdirOnParentIfNecessary:this.type = this
 }
 object ClassPathInputLocation {
   private def getDefaultClassLoader(): ClassLoader = {
@@ -422,4 +449,6 @@ object Locations {
   def temp: TempLocation = TempLocation(tmpdir)
   private val tmpdir = new File(System.getProperty("java.io.tmpdir"))
   val FILE_SEPARATOR = File.separator
+
+  def relative(path: String): RelativeLocation = RelativeLocation(path)
 }
