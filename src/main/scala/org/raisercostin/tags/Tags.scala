@@ -12,6 +12,7 @@ case class Tags(tags: Map[String, String]) {
   def toSimpleMap: Map[String, String] = tags
   def interpolate(pattern: String): Try[String] = interpolator(pattern)
   def analyse(pattern: String): Try[String] = analyser(pattern)
+  def analyse(pattern: String, excludes: Seq[String]): Try[String] = FormatAnalyser(tags.filterKeys(!excludes.contains(_)))(pattern)
 
   def getString(tag: String):Option[String] = apply(tag)
   @deprecated("should return Option[Try[String]] ?")

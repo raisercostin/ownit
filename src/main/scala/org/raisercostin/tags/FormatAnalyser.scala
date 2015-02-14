@@ -1,7 +1,7 @@
 package org.raisercostin.tags
 
 object FormatAnalyser {
-  val constants = Seq("---XXX-IMG_XXXX", "IMG", "MVI", "---at-XXX--XXX", "---at-XXX--", "---at-", "+XXXX", "--XXX", "-XXX","XXX","--+XXXX-- ")
+  val constants = Seq("--+XXXXXXX-- ","--+XXXX--","---XXX-IMG_XXXX", "IMG", "MVI", "---at-XXX--XXX", "---at-XXX--", "---at-", "+XXXX", "--XXX", "-XXX","XXX","--+XXXX-- ")
   val tagFileModificationDateTime = "fileModification"
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
   def cleanFormat(format: String) = {
@@ -23,7 +23,6 @@ object FormatAnalyser {
 }
 case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   import scala.util.{ Try, Success, Failure }
-
   def apply(pattern: String, constants: Seq[String] = constants): Try[String] = Success(analyse(pattern, constants))
   import org.raisercostin.tags.FormatAnalyser._
   //actual good prefix is this
@@ -33,7 +32,7 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   import FormatAnalyser._
   import org.joda.time._
 
-  def analyse(pattern: String, constants: Seq[String] = constants): String = {
+  private def analyse(pattern: String, constants: Seq[String]): String = {
     var result = pattern
     val interp = FormatInterpolator(tags)
     result = replaceInterpolated(result, interp, "$exifFileNumberMajor_" + dateAnalyserNoFormat + "(MMdd)")

@@ -27,6 +27,7 @@ libraryDependencies ++= Seq(
 	//,"org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3"
     //,"com.netflix.rxjava" % "rxjava-scala" % "0.15.0"
 	,"org.scala-lang" % "scala-swing" % scalaVersion.value
+    //,"org.scalacheck" %% "scalacheck" % "1.12.2" % "test"
 )
 
 sbtPlugin := true

@@ -4,9 +4,12 @@ import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
 import scala.util.Try
+import org.scalacheck.Arbitrary
+import java.util.regex.Pattern.Loop
 
 @RunWith(classOf[JUnitRunner])
 class LocationsTest extends FunSuite {
+  import org.scalatest.Matchers._
   test("bug - test spaces in classpath filename") {
     val file = Locations.classpath("a b.jpg")
     assertEquals("a b.jpg", file.resourcePath)
@@ -47,8 +50,8 @@ ZipInputLocation(ClassPathInputLocation(location.zip),Some(c/subzip.zip))""".rep
     assertEquals("""d:\personal\photos2""", from.absolute)
     //assertEquals("""\1409153946085.jpg""",src.diff(src.absolute,from.absolute).get)
     //assertEquals("""1409153946085.jpg""",src.extractAncestor(from).get)
-    assertEquals("""1409153946085.jpg""", src.relativeTo(from))
-    val destFile = dest.child(src.relativeTo(from)).withName(_ => baseName).mkdirOnParentIfNecessary
+    assertEquals("""1409153946085.jpg""", src.extractPrefix(from).relativePath)
+    val destFile = dest.child(src.extractPrefix(from)).withName(_ => baseName).mkdirOnParentIfNecessary
     assertEquals("""d:\personal\photos2-proposed1-good\2014-08-27--18-39-03--------1409153946085.jpg""", destFile.absolute)
   }
   test("copy from classpath") {
@@ -98,12 +101,31 @@ c/e/f.txt""".replaceAll("\r", ""),
   }
   test("parent of relative location") {
     assertEquals("2013", Locations.relative("""2013\2013-05-01 - trip to Monschau""").parentName)
-    assertEquals("""2013\some space\second space""", Locations.relative("""2013\2013-05-01 - trip to Monschau""").parent.child("some space").child("second space").path)
+    assertEquals("""2013\some space\second space""", Locations.relative("""2013\2013-05-01 - trip to Monschau""").parent.child("some space").child("second space").relativePath)
     Locations.file("""d:\personal\photos-tofix\2013\").child("2013-05-01 - trip to Monschau""")
     assertEquals("""D:\personal\work\ownit\.\2013""", Locations.file(".").child(Locations.relative("""2013\2013-05-01 - trip to Monschau""")).parentName)
   }
   test("bug with trailing child fiels") {
-    import org.scalatest.Matchers._
     Try { Locations.file(""".""").child("2013-05-01 - trip to ") }.toString should startWith("Failure(java.lang.IllegalArgumentException: requirement failed: Child [2013-05-01 - trip to ] has trailing spaces)")
+  }
+  test("current folder") {
+    Locations.current("target").toString should not include ("." + Locations.SEP + "target")
+  }
+  test("relative location should not start with file separator") {
+    Try { Locations.relative(Locations.SEP + "folder") }.toString should include("shouldn't start with file separator")
+  }
+  test("relative location parent") {
+    Locations.relative("").child("a").raw.toString should equal("a")
+    Locations.relative("folder").parentName.toString should equal("")
+    Locations.relative("folder").parent.raw.toString should equal("")
+    Locations.relative("folder").child("aaaa").parentName.toString should equal("folder")
+    Locations.relative("folder").child("aaaa").parent.raw.toString should equal("folder")
+  }
+  test("relative computation") {
+    assertEquals("",Locations.relative("path").extractPrefix(Locations.relative("path")).relativePath)
+    assertEquals("",Locations.relative("img.jpg").extractPrefix(Locations.relative("img.jpg")).relativePath)
+    assertEquals("/b/img.jpg",Locations.relative("a/b/img.jpg").extractPrefix(Locations.relative("a")).relativePath)
+    assertEquals("/img.jpg",Locations.relative("a/b/img.jpg").extractPrefix(Locations.relative("a/b")).relativePath)
+    assertEquals("b\\img.jpg",Locations.relative("a\\b\\img.jpg").extractPrefix(Locations.relative("a")).relativePath)
   }
 }

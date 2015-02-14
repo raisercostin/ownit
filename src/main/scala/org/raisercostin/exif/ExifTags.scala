@@ -92,4 +92,5 @@ case class ExifTags(initialTags: Tags) {
   def isVideo: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("video/")
   
   val dateGroup = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate"
+  val dateGroup2 = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate"
 }

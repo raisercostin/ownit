@@ -17,10 +17,13 @@ import org.raisercostin.util.io.OutputLocation
 import org.joda.time.DateTime
 import com.thebuzzmedia.exiftool.ExifToolNew3
 import scala.collection.immutable.StringOps
+import org.raisercostin.util.io.NavigableLocation
+import org.raisercostin.util.io.RelativeLocation
 
 object InternalRenamer {
   def main(args: Array[String]) = {
-    Renamer.main(Array("""d:\personal\photos-tofix\2013"""))
+    Renamer.main(Array("""d:\personal\photos-tofix\2013-temp"""))
+    //Renamer.main(Array("""d:\personal\photos-tofix\2013-temp"""))
   }
 }
 object Renamer {
@@ -94,7 +97,7 @@ object Renamer {
     val oldValue = Option(java.lang.System.getProperty(ExifToolNew3.ENV_EXIF_TOOL_PATH)).filter(_.nonEmpty)
     if (!oldValue.isDefined) {
       val srcExifTool = Locations.classpath("exiftool2.exe")
-      val exifTool = Locations.temp.child("exiftool/exiftool2.exe").nonExisting(_.copyFrom(srcExifTool)).absolute
+      val exifTool = Locations.temp.child("exiftool/exiftool2.exe").asFile.nonExisting(_.copyFrom(srcExifTool)).absolute
       java.lang.System.setProperty(ExifToolNew3.ENV_EXIF_TOOL_PATH, exifTool)
       println(s"Use exiftool from $exifTool copied from $srcExifTool. Environment variable [${ExifToolNew3.ENV_EXIF_TOOL_PATH}] is not defined.")
     } else {
@@ -134,6 +137,27 @@ object Renamer {
     println("done.")
   }
 
+  val standardNameXXXX = dateAnalyser + "$exifFileNumberMajor|(---%%|---XXX)$exifFileNumberMinor|XXXX(-IMG_%%)$compClosestLocation|XXX(---at-%%)$compRemaining|(--%%|)$fileExtension(.%%)"
+  val standardName = dateAnalyserNoXXXX + "$exifFileNumberMajor|(---%%|)$exifFileNumberMinor|(-IMG_%%|)$compClosestLocation|(---at-%%|)$compRemaining|(--%%|)$fileExtension(.%%)"
+
+  val allRenamers = Seq(
+    Formatter("byYearMonth", tags => tags.dateGroup2 + "|(yyyy-MM-MMMM" + Locations.SEP + "|)" + standardName, AnalysedFolder),
+    //
+    //Formatter("flat-XXXX", _ => standardNameXXXX, false),
+    Formatter("flat", _ => standardName, NoFolder),
+    Formatter("standard", _ => standardName, KeepFolder),
+    Formatter("standardSimplified", _ => standardName, AnalysedFolder) //Formatter("standard-XXXX", _ => standardNameXXXX, true),
+    //Formatter("byYear", tags => tags.dateGroup + "|(yyyy|XXXX)" + Locations.FILE_SEPARATOR + standardName, AnalysedFolder),
+    //Formatter("byYear-XXXX", tags => tags.dateGroup + "|(yyyy|XXXX)" + Locations.FILE_SEPARATOR + standardNameXXXX, false),
+    //Formatter("byYearMonth", tags => tags.dateGroup + "|(yyyy-MM-MMMM|XXXX)" + Locations.SEP + standardName, AnalysedFolder) //
+    //Formatter("byYearAndYearMonth", tags => tags.dateGroup + "|(yyyy|XXXX)-" + tags.dateGroup + "|(MM-MMMM|XX)" + Locations.FILE_SEPARATOR + standardName, AnalysedFolder),
+    //Formatter("byYearMonthFlat", tags => tags.dateGroup + "|(yyyy|XXXX)-" + tags.dateGroup + "|(MM-MMMM|XX)" + Locations.FILE_SEPARATOR + standardName, NoFolder) //Formatter("byYearMonth-XXXX", tags => tags.dateGroup + "(yyyy)|(XXXX)-" + tags.dateGroup + "(MM-MMMM)|(XX)" + Locations.FILE_SEPARATOR + standardNameXXXX, false),
+    //Formatter("byCounter", _ => "$exifFileNumberMajor|(%%|)$exifFileNumberMinor|(-%%|)$compRemaining|(-%%|)$fileExtension(.%%)", false),
+    //Formatter("byCounter-XXXX", _ => "$exifFileNumberMajor|(%%|XXX)$exifFileNumberMinor|(-%%|-XXXX)$compRemaining|(-%%|)$fileExtension(.%%)", false),
+    //Formatter("byCounterKeepStructure", _ => "$exifFileNumberMajor|(%%|)$exifFileNumberMinor|(-%%|)$compRemaining|(-%%|)$fileExtension(.%%)", true),
+    //Formatter("byCounterKeepStructure-XXXX", _ => "$exifFileNumberMajor|(%%|XXX)$exifFileNumberMinor|(-%%|-XXXX)$compRemaining|(-%%|)$fileExtension(.%%)", true)
+    )
+
   def process(src: FileLocation, from: FileLocation, placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(debug: Boolean)(implicit devices: DevicesDao) = {
     println("analyze " + src.absolute + " ...")
     val newName = Try {
@@ -144,38 +168,20 @@ object Renamer {
       }
       devices.checkDeviceId(tags)
       println("\tdetected format\t" + tags.analyse(src.name).get)
-
-      val standardNameXXXX = dateAnalyser + "$exifFileNumberMajor|(---%%|---XXX)$exifFileNumberMinor|XXXX(-IMG_%%)$compClosestLocation|XXX(---at-%%)$compRemaining|(--%%|)$fileExtension(.%%)"
-      val standardName = dateAnalyserNoXXXX + "$exifFileNumberMajor|(---%%|)$exifFileNumberMinor|(-IMG_%%|)$compClosestLocation|(---at-%%|)$compRemaining|(--%%|)$fileExtension(.%%)"
-
-      val allRenamers = Seq(
-        //Formatter("flat-XXXX", _ => standardNameXXXX, false),
-        Formatter("flat", _ => standardName, NoFolder),
-        Formatter("standard", _ => standardName, KeepFolder),
-        Formatter("standardSimplified", _ => standardName, AnalysedFolder),
-        //Formatter("standard-XXXX", _ => standardNameXXXX, true),
-        //Formatter("byYear", tags => tags.dateGroup + "|(yyyy|XXXX)" + Locations.FILE_SEPARATOR + standardName, AnalysedFolder),
-        //Formatter("byYear-XXXX", tags => tags.dateGroup + "|(yyyy|XXXX)" + Locations.FILE_SEPARATOR + standardNameXXXX, false),
-        Formatter("byYearMonth", tags => tags.dateGroup + "|(yyyy-MM-MMMM|XXXX)" + Locations.FILE_SEPARATOR + standardName, AnalysedFolder) //Formatter("byYearAndYearMonth", tags => tags.dateGroup + "|(yyyy|XXXX)-" + tags.dateGroup + "|(MM-MMMM|XX)" + Locations.FILE_SEPARATOR + standardName, AnalysedFolder),
-        //Formatter("byYearMonthFlat", tags => tags.dateGroup + "|(yyyy|XXXX)-" + tags.dateGroup + "|(MM-MMMM|XX)" + Locations.FILE_SEPARATOR + standardName, NoFolder) //Formatter("byYearMonth-XXXX", tags => tags.dateGroup + "(yyyy)|(XXXX)-" + tags.dateGroup + "(MM-MMMM)|(XX)" + Locations.FILE_SEPARATOR + standardNameXXXX, false),
-        //Formatter("byCounter", _ => "$exifFileNumberMajor|(%%|)$exifFileNumberMinor|(-%%|)$compRemaining|(-%%|)$fileExtension(.%%)", false),
-        //Formatter("byCounter-XXXX", _ => "$exifFileNumberMajor|(%%|XXX)$exifFileNumberMinor|(-%%|-XXXX)$compRemaining|(-%%|)$fileExtension(.%%)", false),
-        //Formatter("byCounterKeepStructure", _ => "$exifFileNumberMajor|(%%|)$exifFileNumberMinor|(-%%|)$compRemaining|(-%%|)$fileExtension(.%%)", true),
-        //Formatter("byCounterKeepStructure-XXXX", _ => "$exifFileNumberMajor|(%%|XXX)$exifFileNumberMinor|(-%%|-XXXX)$compRemaining|(-%%|)$fileExtension(.%%)", true)
-        )
       allRenamers.foreach { formatter =>
         val name = formatter.folder
-        val newDestFile = formatter.proposal(placeBadFiles.withBaseName(_ + "-" + name), placeGoodFiles.child(name))(from, src, tags)
+        val path2 = src.extractPrefix(from)
+        val newDestFile = formatter.proposal(placeBadFiles.withBaseName(_ + "-" + name), placeGoodFiles)(path2, tags).mkdirOnParentIfNecessary.renamedIfExists
         val ANSI_BACK = "" //"\u001B[1F";
         //println(ANSI_BACK + "\t"+name.padTo(30,' ')+"> smartcopy to\t" + newDestFile.absolute)
-        println(ANSI_BACK + "\t" + name.padTo(30, ' ') + "-> \t" + newDestFile.relativeTo(placeGoodFiles))
+        println(ANSI_BACK + "\t" + name.padTo(30, ' ') + "-> \t" + newDestFile.extractPrefix(placeGoodFiles))
         src.copyAsHardLink(newDestFile)
       }
     }
     newName.recover {
       case e =>
         e.printStackTrace()
-        placeBadFiles.child(src.relativeTo(from)).mkdirOnParentIfNecessary.inspect(x => println("bad file " + x + " with error " + e.getMessage())).copyFromAsHardLink(src)
+        placeBadFiles.child(src extractPrefix(from)).mkdirOnParentIfNecessary.inspect(x => println("bad file " + x + " with error " + e.getMessage())).copyFromAsHardLink(src)
         Failure(e)
     }
   }
@@ -185,27 +191,30 @@ object Renamer {
   object NoFolder extends FolderStrategy
 
   case class Formatter(folder: String, interpolator: (ExifTags) => String, keepStructure: FolderStrategy) {
-    def proposal(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
-      val newName = tags.interpolate(interpolator(tags)).get
+    def proposal[T <: NavigableLocation](placeBadFiles: T, rootPlaceGoodFiles:T)(path2: RelativeLocation, tags: ExifTags): T = {
+      val value = interpolator(tags)
+      val newName = tags.interpolate(value).get
       val imageOrVideo = tags.isImage || tags.isVideo
-      val category = src.parent.relativeTo(from)
-      val analysedCategory = tags.analyse(category).getOrElse(category)
-      val remaining = tags.cleanFormat(analysedCategory)
-      val basePath = Locations.relative(if (imageOrVideo) newName else src.name)
+      val category = path2.parent.standard(_.relativePath)
+      val analysedCategory = tags.analyse(category,Seq("compClosestLocation")).getOrElse(category)
+      val clean = tags.cleanFormat(analysedCategory).replaceAllLiterally(Locations.SEP_STANDARD, "--")
+      val remaining = Option(clean).filter(_.length > 0)
+      val basePath = Locations.relative(newName).withName(if (imageOrVideo) _ else path2.name)
       val baseFolder = basePath.parent
       val baseName = basePath.name
+      val placeGoodFiles = rootPlaceGoodFiles.child(folder)
       val place = keepStructure match {
         case KeepFolder =>
           placeGoodFiles.child(baseFolder).child(category)
         case AnalysedFolder =>
           if (imageOrVideo)
-            placeGoodFiles.child(baseFolder).withBaseName(_ + Option(remaining).filter(_.length > 0).map("--" + _).getOrElse(""))
+            placeGoodFiles.child(baseFolder).withBaseName2(x => remaining.map { y => if (x.nonEmpty && y.nonEmpty) x + "--" + y else x + y })
           else
-            placeGoodFiles.child(baseFolder).child(Option(remaining).filter(_.length > 0).map("--" + _).getOrElse(""))
+           	placeGoodFiles.child(baseFolder).child(remaining)
         case NoFolder =>
           placeGoodFiles.child(baseFolder)
       }
-      place.child(baseName).mkdirOnParentIfNecessary.renamedIfExists
+      place.child(baseName)
     }
   }
   //  def standardizeName(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {

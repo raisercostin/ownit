@@ -7,6 +7,7 @@ import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
 import org.raisercostin.tags.FormatAnalyser
 import org.raisercostin.tags.FormatInterpolator
+import org.raisercostin.tags.Tags
 
 @RunWith(classOf[JUnitRunner])
 class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues {
@@ -44,6 +45,13 @@ class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues 
   test("analyze format using interpolator") {
     assertEquals("Success(2015:01:06 11:44:08+0200)", FormatInterpolator(tags2)(FormatAnalyser.dateAnalyserNoFormat).toString)
     assertEquals("$exifFileNumberMajor_$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#${fileExtension}|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate(MMdd).jpg", analyse("437_0106.jpg").get)
+  }
+  test("exclude tags from analisys") {
+    val tags = Tags(tags2)
+    assertEquals("aaaa${exifFileNumberMajor}${exifFileNumberMinor}bbb", tags.analyse("aaaa4372366bbb",Seq()).get)
+    assertEquals("aaaa437${exifFileNumberMinor}bbb", tags.analyse("aaaa4372366bbb",Seq("exifFileNumberMajor")).get)
+    assertEquals("aaaa${exifFileNumberMajor}2366bbb", tags.analyse("aaaa4372366bbb",Seq("exifFileNumberMinor")).get)
+    assertEquals("aaaa4372366bbb", tags.analyse("aaaa4372366bbb",Seq("exifFileNumberMinor","exifFileNumberMajor")).get)
   }
 }
 
