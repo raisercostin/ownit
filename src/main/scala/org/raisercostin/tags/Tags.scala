@@ -9,7 +9,6 @@ case class Tags(tags: Map[String, String]) {
   private lazy val interpolator = FormatInterpolator(tags)
   private lazy val analyser = FormatAnalyser(tags)
   def apply(tag: String): Option[String] = tags.get(tag)
-  def toSimpleMap: Map[String, String] = tags
   def interpolate(pattern: String): Try[String] = interpolator(pattern)
   def analyse(pattern: String): Try[String] = analyser(pattern)
   def analyse(pattern: String, excludes: Seq[String]): Try[String] = FormatAnalyser(tags.filterKeys(!excludes.contains(_)))(pattern)
@@ -27,4 +26,7 @@ case class Tags(tags: Map[String, String]) {
   def asLocalDateTime(value: String):Try[LocalDateTime] = Formats.extractLocalDateTime(value)
   
   def cleanFormat(pattern:String):String = FormatAnalyser.cleanFormat(pattern)
+  
+  def +(entry: (String,String)) = Tags(tags.updated(entry._1,entry._2))
+  def ++(values: Map[String,String]) = Tags(tags ++ values)
 }

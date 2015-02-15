@@ -30,6 +30,20 @@ import java.nio.file.Files
 import java.security.AccessController
 import java.io.FileSystem
 
+/**
+ * Should take into consideration several composable/ortogonal aspects:
+ * - end of line: win,linux,osx - internal standard: \n
+ * - file separator: win,linux,osx - internal standard: / (like linux, fewer colisions with string escaping in java)
+ * - file name case sensitivity - internal standard: case sensible (in windows there will not be any problem)
+ * - win 8.3 file names vs. full file names - internal standard: utf-8
+ * 
+ * In principle should be agnostic to these aspects and only at runtime will depend on the local environment.
+ */
+package object io{
+  
+}
+
+
 import Locations._
 trait NavigableLocation {self=>
   def nameAndBefore: String
@@ -287,6 +301,7 @@ trait RelativeLocationLike extends BaseLocation {
   	new RelativeLocation(if (relativePath.isEmpty) child else relativePath + SEP + child).asInstanceOf[this.type]
   }
   def isEmpty: Boolean = relativePath.isEmpty
+  def nonEmpty:Boolean = !isEmpty
 }
 case class RelativeLocation(relativePath: String) extends RelativeLocationLike
 case class FileLocation(fileFullPath: String, append: Boolean = false) extends FileLocationLike {

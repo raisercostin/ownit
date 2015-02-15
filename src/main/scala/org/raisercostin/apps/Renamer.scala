@@ -22,7 +22,7 @@ import org.raisercostin.util.io.RelativeLocation
 
 object InternalRenamer {
   def main(args: Array[String]) = {
-    Renamer.main(Array("""d:\personal\photos-tofix\2013-temp"""))
+    Renamer.main(Array("""d:\personal\photos-tofix\2013"""))
     //Renamer.main(Array("""d:\personal\photos-tofix\2013-temp"""))
   }
 }
@@ -181,7 +181,7 @@ object Renamer {
     newName.recover {
       case e =>
         e.printStackTrace()
-        placeBadFiles.child(src extractPrefix(from)).mkdirOnParentIfNecessary.inspect(x => println("bad file " + x + " with error " + e.getMessage())).copyFromAsHardLink(src)
+        placeBadFiles.child(src extractPrefix (from)).mkdirOnParentIfNecessary.inspect(x => println("bad file " + x + " with error " + e.getMessage())).copyFromAsHardLink(src)
         Failure(e)
     }
   }
@@ -190,31 +190,52 @@ object Renamer {
   object AnalysedFolder extends FolderStrategy
   object NoFolder extends FolderStrategy
 
-  case class Formatter(folder: String, interpolator: (ExifTags) => String, keepStructure: FolderStrategy) {
-    def proposal[T <: NavigableLocation](placeBadFiles: T, rootPlaceGoodFiles:T)(path2: RelativeLocation, tags: ExifTags): T = {
-      val value = interpolator(tags)
-      val newName = tags.interpolate(value).get
-      val imageOrVideo = tags.isImage || tags.isVideo
-      val category = path2.parent.standard(_.relativePath)
-      val analysedCategory = tags.analyse(category,Seq("compClosestLocation")).getOrElse(category)
+  case class Formatter(folder: String, patternSupplier: (ExifTags) => String, keepStructure: FolderStrategy) {
+    def remainingFolder(category: String, tags: ExifTags) = {
+      val analysedCategory = tags.analyse(category, Seq("compClosestLocation")).getOrElse(category)
       val clean = tags.cleanFormat(analysedCategory).replaceAllLiterally(Locations.SEP_STANDARD, "--")
       val remaining = Option(clean).filter(_.length > 0)
-      val basePath = Locations.relative(newName).withName(if (imageOrVideo) _ else path2.name)
-      val baseFolder = basePath.parent
-      val baseName = basePath.name
+      remaining
+    }
+
+    def proposal[T <: NavigableLocation](placeBadFiles: T, rootPlaceGoodFiles: T)(path2: RelativeLocation, tags: ExifTags): T = {
+      val exifFileName = tags("exifFileName")
+      require(exifFileName.isDefined, "Tags should contain key [exifFileName].")
+      val fileExtension = tags("fileExtension").get
+      require(exifFileName.get.endsWith(fileExtension), s"Tag exifFileName=[${exifFileName.get}] should end with the value of fileExtension=[$fileExtension].")
+      //      val fileNameAnalysis = tags.analyse(path2.name)
+      //      val pathAnalysis = tags.analyse(path2.parent.relativePath)
+      //
+      val imageOrVideo = tags.isImage || tags.isVideo
       val placeGoodFiles = rootPlaceGoodFiles.child(folder)
-      val place = keepStructure match {
-        case KeepFolder =>
-          placeGoodFiles.child(baseFolder).child(category)
-        case AnalysedFolder =>
-          if (imageOrVideo)
-            placeGoodFiles.child(baseFolder).withBaseName2(x => remaining.map { y => if (x.nonEmpty && y.nonEmpty) x + "--" + y else x + y })
-          else
-           	placeGoodFiles.child(baseFolder).child(remaining)
-        case NoFolder =>
-          placeGoodFiles.child(baseFolder)
+      if (imageOrVideo) {
+        val pattern = patternSupplier(tags)
+        val newName = tags.interpolate(pattern).get
+        val category = path2.parent.standard(_.relativePath)
+        val remaining = remainingFolder(category, tags)
+        val basePath = Locations.relative(newName)
+        val baseFolder = basePath.parent
+        val baseName = basePath.name
+        val place = keepStructure match {
+          case KeepFolder =>
+            placeGoodFiles.child(baseFolder).child(category)
+          case AnalysedFolder =>
+            if (imageOrVideo && baseFolder.nonEmpty)
+              placeGoodFiles.child(baseFolder).withBaseName2(x => remaining.map { y => if (x.nonEmpty && y.nonEmpty) x + "--" + y else x + y })
+            else
+              placeGoodFiles.child(baseFolder).child(remaining)
+          case NoFolder =>
+            placeGoodFiles.child(baseFolder)
+        }
+        place.child(baseName)
+      } else {
+        keepStructure match {
+          case KeepFolder =>
+            placeGoodFiles.child(path2)
+          case _ =>
+            placeGoodFiles.child("unorganized").child(path2)
+        }
       }
-      place.child(baseName)
     }
   }
   //  def standardizeName(placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(from: FileLocation, src: FileLocation, tags: ExifTags): FileLocation = {
