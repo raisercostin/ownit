@@ -149,8 +149,8 @@ class ExifTagsTest extends FunSuite {
     val tags: ExifTags = raw.loadExifTags(Locations.classpath("aaa-20140722_200427.mov"))
     println(tags.tags.tags.mkString("\n"))
     assertEquals("2014:07:22 20:04:27", tags("pathLocalDateTime").get.toString())
-    assertEquals("+03:00", tags.dateTimeZone.get.toString())
     assertEquals("2014-07-22T20:04:27.000+03:00", tags.dateTime.get.toString())
+    assertEquals("+03:00", tags.dateTimeZone.get.toString())
   }
   test("bug in exiftool that cannot read utf-8 file names on windows") {
     val tags: ExifTags = raw.loadExifTags(Locations.classpath("sample1-Mircea-Vodă.jpg"))

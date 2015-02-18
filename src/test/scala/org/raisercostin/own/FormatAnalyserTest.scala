@@ -34,7 +34,7 @@ class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues 
     assertEquals("${exifDateTimeOriginal+1s+yyyy}${exifDateTimeOriginal+1s+MM}${exifDateTimeOriginal+1s+dd}_${exifDateTimeOriginal+1s+HH}${exifDateTimeOriginal+1s+mm}${exifDateTimeOriginal+1s+ss}.jpg", analyse("20150106_114409.jpg").get)
     assertEquals("${exifDateTimeOriginal+2s+yyyy}${exifDateTimeOriginal+2s+MM}${exifDateTimeOriginal+2s+dd}_${exifDateTimeOriginal+2s+HH}${exifDateTimeOriginal+2s+mm}${exifDateTimeOriginal+2s+ss}.jpg", analyse("20150106_114410.jpg").get)
     assertEquals("${exifDateTimeOriginal+3s+yyyy}${exifDateTimeOriginal+3s+MM}${exifDateTimeOriginal+3s+dd}_${exifDateTimeOriginal+3s+HH}${exifDateTimeOriginal+3s+mm}${exifDateTimeOriginal+3s+ss}.jpg", analyse("20150106_114411.jpg").get)
-    assertEquals("20150106_114412.jpg", analyse("20150106_114412.jpg").get)
+    assertEquals("${exifDateTimeOriginal+yyyy}${exifDateTimeOriginal+MM}${exifDateTimeOriginal+dd}_${exifDateTimeOriginal+HH}${exifDateTimeOriginal+mm}12.jpg", analyse("20150106_114412.jpg").get)
   }
   ignore("analyze consolidated date format", Tag("failed")) {
     assertEquals("$exifDateTimeOriginal(yyyyMMdd_HHmmss).jpg", analyse("20150106_114408.jpg").get)

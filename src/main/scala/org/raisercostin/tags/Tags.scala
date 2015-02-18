@@ -16,6 +16,7 @@ case class Tags(tags: Map[String, String]) {
   def getString(tag: String):Option[String] = apply(tag)
   @deprecated("should return Option[Try[String]] ?")
   def getInt(tag: String): Option[Int] = apply(tag).map(_.toInt)
+  def getDouble(tag: String):Option[Double] = apply(tag).map(_.toDouble)
   @deprecated("should return Option[Try[DateTime]] ?")
   def getDateTime(tag: String):Option[DateTime] = apply(tag).map(Formats.extractDateTime).map{_.get}
   def getDateTimeZone(tag: String):Option[DateTimeZone] = apply(tag).map(Formats.extractDateTimeZone).map{_.get}

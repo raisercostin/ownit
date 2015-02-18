@@ -10,6 +10,7 @@ import org.joda.time.LocalDateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.Duration
 import com.google.common.primitives.Ints
+import org.joda.time.format.DateTimeFormatter
 
 object ExifTags {
   /*
@@ -32,6 +33,24 @@ object ExifTags {
     DateTimeZone.forOffsetMillis(totalMinutes * 60 * 1000)
     //DateTimeZone.forOffsetHoursMinutes(hours,minutesRounded)
   }
+  case class Version(date: DateTime, version: String)
+  val versions = """|
+ | @see http://www.photometadata.org/meta-resources-metadata-types-standards-exif
+ | History of the Exif standard
+ | Date	Version	Description
+ | October 1995	1	Established as a JEIDA standard. Defined the structure, consisting of an image data format and attribute information (tags), and basic tags.
+ | November 1997	1.1	Kept the essential provisions of Version 1.0 and added provisions for optional attribute information and format operation
+ | June 1998	2	Added sRGB color space, compressed thumbnails and audio files
+ | December 1998	2.1	Upgraded and expanded the storage format and attribute information. Added recommended compatibility details as a supplement to Version 2.0
+ | February 2002	2.2	Added information to Version 2.1 to improve print finishing
+ | September 2003	2.21	Added optional color space (Adobe RGB)
+""".stripMargin.split("\n").toList.drop(4).map { _.split("\t").toSeq }.map{
+    case Seq(date, version, description) =>
+      val versionInt = (version.toDouble * 100).toInt
+      Version(Formats.parseLocalDateTime("MMMM yyyy",date.trim).get.toDateTime(DateTimeZone.UTC),String.format("%04d",versionInt.asInstanceOf[Object]))
+  }.sortBy(_.version)
+  //println(versions.mkString("\n"))
+  def availabilityDate(version:String):Option[DateTime] =  versions.filter(x=>x.version <= version).lastOption.map(_.date)
 }
 case class ExifTags(initialTags: Tags) {
   import ExifTags._
@@ -46,20 +65,18 @@ case class ExifTags(initialTags: Tags) {
   def fileNumber = initialTags.getInt("exifFileNumber")
   def gpsLatitude = initialTags.getString("exifGPSLatitude")
   def gpsLongitude = initialTags.getString("exifGPSLongitude")
-  def gpsDateTimeUTC = initialTags.getDateTime("exifGPSDateTime")
+  def gpsDateTimeUTC = getDateTime("exifGPSDateTime")
   //  Track Create Date               : 2014:07:22 17:04:32
   //Track Modify Date               : 2014:07:22 17:04:32
   //Media Create Date               : 2014:07:22 17:04:32
   //Media Modify Date               : 2014:07:22 17:04:32
-  def asDateTime(value: Try[String]): Try[DateTime] = value.map(initialTags.asDateTime(_).get)
-  def asLocalDateTime(value: Try[String]): Try[LocalDateTime] = value.map(initialTags.asLocalDateTime(_).get)
-  def interpolateAsDateTime(value: String): Try[DateTime] = asDateTime(initialTags.interpolate(value + "(" + Formats.dateTimePattern + ")"))
-  def interpolateAsLocalDateTime(value: String): Try[LocalDateTime] = asLocalDateTime(initialTags.interpolate(value + "(" + Formats.localDateTimeFormatterISO.name + ")"))
   def dateTimeUTC: Try[DateTime] = {
     val tagsLocal = "$exifGPSDateTime|$exifTrackCreateDate|$exifMediaCreateDate"
-    val tags = tagsLocal+"|$exifDateTimeOriginal"
-    interpolateAsDateTime(tags).map{_.withZone(DateTimeZone.UTC)} orElse interpolateAsLocalDateTime(tagsLocal).map(_.toDateTime(DateTimeZone.UTC))
+    val tags = tagsLocal + "|$exifDateTimeOriginal"
+    interpolateAsDateTime(tags).map { _.withZone(DateTimeZone.UTC) } orElse interpolateAsLocalDateTime(tagsLocal).map(_.toDateTime(DateTimeZone.UTC))
   }
+  val dateGroup = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifDateTimeDigitized|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate"
+  val dateGroup2 = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifDateTimeDigitized|$exifModifyDate#THM|$exifModifyDate"
   def gpsDateTime = for (x <- gpsDateTimeUTC; y <- dateTimeZone) yield x.withZone(y)
   def gps(): Option[Gps] = gpsLatitude.map { x =>
     Gps(
@@ -91,6 +108,20 @@ case class ExifTags(initialTags: Tags) {
   def isImage: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("image/")
   def isVideo: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("video/")
   
-  val dateGroup = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate"
-  val dateGroup2 = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate"
+  def exifVersion:Option[String] = initialTags.getString("exifExifVersion")
+  def exifVersionDate:Option[DateTime] = exifVersion.flatMap{version => availabilityDate(version)}
+  def originalExif:Boolean = initialTags.getString("exifModel").isDefined
+  def getDateTime(tag: String):Option[DateTime] = intermediateTags.getDateTime(tag)
+  def getLocalDateTime(tag: String):Option[LocalDateTime] = intermediateTags.getLocalDateTime(tag)
+//  def getDateTime(tag: String):Option[DateTime] = validate(initialTags.getDateTime(tag))
+//  def validate(date:Option[DateTime]):Option[DateTime] = date.flatMap{validDateTime}
+//  def validDateTime(date:DateTime):Option[DateTime] = for{first <- exifVersionDate if !first.isAfter(date)} yield date
+//  def getLocalDateTime(tag: String):Option[LocalDateTime] = validate2(initialTags.getLocalDateTime(tag))
+//  def validate2(date:Option[LocalDateTime]):Option[LocalDateTime] = date.flatMap{validLocalDateTime}
+//  def validLocalDateTime(date:LocalDateTime):Option[LocalDateTime] = for{first <- exifVersionDate if !first.toLocalDateTime().isAfter(date)} yield date
+
+  def asDateTime(value: Try[String]): Try[DateTime] = value.map(initialTags.asDateTime(_).get)//.map{x=>validDateTime(x).get}
+  def asLocalDateTime(value: Try[String]): Try[LocalDateTime] = value.map(initialTags.asLocalDateTime(_).get)//.map{x=>validLocalDateTime(x).get}
+  def interpolateAsDateTime(value: String): Try[DateTime] = asDateTime(initialTags.interpolate(value + "(" + Formats.dateTimePattern + ")"))
+  def interpolateAsLocalDateTime(value: String): Try[LocalDateTime] = asLocalDateTime(initialTags.interpolate(value + "(" + Formats.localDateTimeFormatterISO.name + ")"))
 }

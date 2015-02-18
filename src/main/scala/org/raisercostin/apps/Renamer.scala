@@ -19,11 +19,16 @@ import com.thebuzzmedia.exiftool.ExifToolNew3
 import scala.collection.immutable.StringOps
 import org.raisercostin.util.io.NavigableLocation
 import org.raisercostin.util.io.RelativeLocation
+import org.joda.time.Duration
+import org.joda.time.format.PeriodFormat
+import org.joda.time.Period
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 object InternalRenamer {
   def main(args: Array[String]) = {
-    Renamer.main(Array("""d:\personal\photos-tofix\2013"""))
-    //Renamer.main(Array("""d:\personal\photos-tofix\2013-temp"""))
+    //Renamer.main(Array("""d:\personal\photos-tofix\2006"""))
+    Renamer.main(Array("""z:\1-personal-pics-fixed\XXXX-problematic\""","""-proposed"""))
   }
 }
 object Renamer {
@@ -89,6 +94,8 @@ object Renamer {
     }
 
   def organize2(fromPath: String, toRelativeOrAbsolute: String = "-proposed", debug: Boolean = false, filter: Option[String] = None) = try {
+    var all =  Map[String,AtomicLong]().withDefault(_=> new AtomicLong(0))
+    val start = new DateTime()
     //if(debug)
     println(s"organize [$fromPath] -> [$toRelativeOrAbsolute]")
     val cities = Locations.classpath("cities1000.zip")
@@ -117,7 +124,16 @@ object Renamer {
       case (file1, x) =>
         val file = file1.toFile
         val src = Locations.file(file)
-        val res = process(src, from, placeBadFiles, placeGoodFiles)(debug).recover {
+        val res = process(src, from, placeBadFiles, placeGoodFiles)(debug)
+        res.map{tags=>
+          tags.tags.tags.keys.foreach{key=>
+            val value = all(key)
+            value.incrementAndGet()
+            all = all.updated(key,value)
+          }
+        }
+        placeGoodFiles.child("tags2.txt").deleteIfExists.writeContent(all.toSeq.sortBy(-_._2.get()).mkString("\n"))
+        res.recover {
           case e =>
             if (debug)
               e.printStackTrace
@@ -134,14 +150,17 @@ object Renamer {
           println(f.getMessage)
     }
     */
-    println("done.")
+    val period = new Period(start,new DateTime())
+    val histo = all.toSeq.sortBy(-_._2.get())
+    placeGoodFiles.child("tags.txt").renamedIfExists.writeContent(histo.mkString("\n"))
+    println("done in "+PeriodFormat.getDefault().print(period.normalizedStandard()))
   }
 
   val standardNameXXXX = dateAnalyser + "$exifFileNumberMajor|(---%%|---XXX)$exifFileNumberMinor|XXXX(-IMG_%%)$compClosestLocation|XXX(---at-%%)$compRemaining|(--%%|)$fileExtension(.%%)"
   val standardName = dateAnalyserNoXXXX + "$exifFileNumberMajor|(---%%|)$exifFileNumberMinor|(-IMG_%%|)$compClosestLocation|(---at-%%|)$compRemaining|(--%%|)$fileExtension(.%%)"
 
   val allRenamers = Seq(
-    Formatter("byYearMonth", tags => tags.dateGroup2 + "|(yyyy-MM-MMMM" + Locations.SEP + "|)" + standardName, AnalysedFolder),
+    Formatter("byYearMonth", tags => tags.dateGroup2 + "|(yyyy-MM-MMMM'" + Locations.SEP_STANDARD + "'|)" + standardName, AnalysedFolder),
     //
     //Formatter("flat-XXXX", _ => standardNameXXXX, false),
     Formatter("flat", _ => standardName, NoFolder),
@@ -158,7 +177,7 @@ object Renamer {
     //Formatter("byCounterKeepStructure-XXXX", _ => "$exifFileNumberMajor|(%%|XXX)$exifFileNumberMinor|(-%%|-XXXX)$compRemaining|(-%%|)$fileExtension(.%%)", true)
     )
 
-  def process(src: FileLocation, from: FileLocation, placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(debug: Boolean)(implicit devices: DevicesDao) = {
+  def process(src: FileLocation, from: FileLocation, placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(debug: Boolean)(implicit devices: DevicesDao):Try[ExifTags] = {
     println("analyze " + src.absolute + " ...")
     val newName = Try {
       val tags = raw.loadExifTags(src)
@@ -177,8 +196,9 @@ object Renamer {
         println(ANSI_BACK + "\t" + name.padTo(30, ' ') + "-> \t" + newDestFile.extractPrefix(placeGoodFiles))
         src.copyAsHardLink(newDestFile)
       }
+      tags
     }
-    newName.recover {
+    newName.recoverWith {
       case e =>
         e.printStackTrace()
         placeBadFiles.child(src extractPrefix (from)).mkdirOnParentIfNecessary.inspect(x => println("bad file " + x + " with error " + e.getMessage())).copyFromAsHardLink(src)
@@ -193,7 +213,14 @@ object Renamer {
   case class Formatter(folder: String, patternSupplier: (ExifTags) => String, keepStructure: FolderStrategy) {
     def remainingFolder(category: String, tags: ExifTags) = {
       val analysedCategory = tags.analyse(category, Seq("compClosestLocation")).getOrElse(category)
-      val clean = tags.cleanFormat(analysedCategory).replaceAllLiterally(Locations.SEP_STANDARD, "--")
+      //println(analysedCategory)
+      var clean = tags.cleanFormat(analysedCategory).replaceAllLiterally(Locations.SEP_STANDARD, "--")
+      clean = clean.replaceAll("""\d+""", "")
+      clean = tags.cleanFormat(clean)
+      clean = clean.replaceAllLiterally("PRIVATE--AVCHD--BDMV--STREAM","") 
+      clean = clean.replaceAllLiterally("CANON","") 
+      clean = clean.replaceAllLiterally("FUJI","") 
+      clean = clean.replaceAllLiterally("camera uploads","") 
       val remaining = Option(clean).filter(_.length > 0)
       remaining
     }
@@ -206,6 +233,7 @@ object Renamer {
       //      val fileNameAnalysis = tags.analyse(path2.name)
       //      val pathAnalysis = tags.analyse(path2.parent.relativePath)
       //
+      //println(tags.tags.tags.mkString("\n"))
       val imageOrVideo = tags.isImage || tags.isVideo
       val placeGoodFiles = rootPlaceGoodFiles.child(folder)
       if (imageOrVideo) {

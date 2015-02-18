@@ -92,7 +92,7 @@ object FormatInterpolator {
 case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
   import FormatInterpolator._
   def apply(pattern: String): Try[String] = Try {
-
+	  //println(s"interpolate pattern=[$pattern]")
     import scala.util.matching.Regex
     //Assert.assertEquals(patternAll,patternAll2)
     var result = pattern
@@ -129,7 +129,7 @@ case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
     var cashed = Seq[Try[String]]()
     val firstGood = values.filter { x => if (x.isFailure) cashed = cashed :+ x; x.isSuccess }
     if (firstGood.isEmpty)
-      throw new RuntimeException(s"Can't interpolate format [$all]: $cashed")
+      throw new RuntimeException(s"Can't interpolate format [$all]: $cashed",cashed.head.failed.get)
     firstGood.head
   }
   private def expandMultiple(selector: String, convertor: Option[String]): Try[String] = {
