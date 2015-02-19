@@ -13,8 +13,19 @@ import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.DateTimeZone
 import org.joda.time.tz.DateTimeZoneBuilder
 import org.raisercostin.exif.ExifTags
-object Formats {
+
+trait Formatter {
+  def convert(value: String, convertor: Option[String] = None, convertorNull: Option[String] = None): Try[String]
+}
+trait Validator {
+  def validateDateTime(dateTime: DateTime): Option[DateTime]
+  def validateLocalDateTime(dateTime: LocalDateTime): Option[LocalDateTime]
+}
+object Formats extends Formats(None) {
   val logger = org.slf4j.LoggerFactory.getLogger(Formats.getClass())
+}
+case class Formats(val validator: Option[Validator]) extends Formatter {
+  import Formats._
   import scala.util.{ Try, Failure, Success }
   def convert(value: String, convertor: Option[String] = None, convertorNull: Option[String] = None): Try[String] =
     if (value.isEmpty)
@@ -44,8 +55,8 @@ object Formats {
         fallbackDateTimeConverter(extractDateTimeGeneric),
         fallbackDateTimeConverter(extractLocalDateTimeGeneric),
         useFormatString)
-      val all = formatters.toStream.map(formatter=> Try{formatter(format, value)}.getOrElse(Failure(new RuntimeException("Partial applied function "+formatter+" failed."))))
-      val result= all.find(x=>x.isSuccess)
+      val all = formatters.toStream.map(formatter => Try { formatter(format, value) }.getOrElse(Failure(new RuntimeException("Partial applied function " + formatter + " failed."))))
+      val result = all.find(x => x.isSuccess)
       result.getOrElse(all.last)
       //((simpleConverter orElse dateTimeConverter orElse localDateTimeConverter orElse fallbackDateTimeConverter(extractDateTimeGeneric) orElse fallbackDateTimeConverter(extractLocalDateTimeGeneric))((format, value))).orElse(useFormatString(format, value))
     }
@@ -129,12 +140,18 @@ object Formats {
   //def extractLocalDateTime(value: String): Try[LocalDateTime] = Try { LocalDateTime.parse(value, localDateTimeInternalExifFormatter.withOffsetParsed()) }
   def extractLocalDateTimeGeneric(value: Any): Try[org.joda.time.LocalDateTime] = {
     val text = value.toString.replaceAll("""[ \W]+""", "")
-    parseLocalDateTime("yyyyMMddHHmmss",text)
+    parseLocalDateTime("yyyyMMddHHmmss", text)
   }
-  
-  def parseLocalDateTime(format:String, value:String):Try[LocalDateTime] = {
+
+  def parseLocalDateTime(format: String, value: String): Try[LocalDateTime] = {
     val formatter = Named(format, patternWithoutOffsetParsed)
-    Try { LocalDateTime.parse(value, formatter) }
+    Try { validateLocalDateTime(LocalDateTime.parse(value.trim, formatter)) }
+  }
+
+  def extractDateTimeGeneric(value: Any): Try[org.joda.time.DateTime] = {
+    val text = value.toString.replaceAll("""[ \W]+""", "")
+    val formatter = Named("yyyyMMddHHmmssZ", patternWithOffsetParsed)
+    Try { validateDateTime(DateTime.parse(text.trim, formatter)) }
   }
 
   def extractLocalDateTime(value: Any): Try[LocalDateTime] = {
@@ -142,9 +159,9 @@ object Formats {
     import org.joda.time.format.DateTimeFormat
     import java.util.GregorianCalendar
     import java.util.Date
-    value match {
+    val result = value match {
       case text: String =>
-        val formatters = Seq(localDateTimeInternalExifFormatter, localDateTimeFormatterISO,Named("yyyy-MM-dd HH:mm:ss", patternWithoutOffsetParsed))
+        val formatters = Seq(localDateTimeInternalExifFormatter, localDateTimeFormatterISO, Named("yyyy-MM-dd HH:mm:ss", patternWithoutOffsetParsed))
           def parse(format: Named[DateTimeFormatter]) = Try { LocalDateTime.parse(text.trim, format) }
         parseInOrder("LocalDateTime", formatters, parse, text.trim)
       case date: Date =>
@@ -154,19 +171,14 @@ object Formats {
       case x =>
         throw new IllegalArgumentException(s"Can't convert [$value] of type [${value.getClass}] to LocalDateTime.")
     }
-  }
-
-  def extractDateTimeGeneric(value: Any): Try[org.joda.time.DateTime] = {
-    val text = value.toString.replaceAll("""[ \W]+""", "")
-    val format = Named("yyyyMMddHHmmssZ", patternWithOffsetParsed)
-    Try { DateTime.parse(text.trim, format) }
+    result.map(validateLocalDateTime)
   }
   def extractDateTime(value: Any): Try[org.joda.time.DateTime] = {
     import org.joda.time.DateTime
     import org.joda.time.format.DateTimeFormat
     import java.util.GregorianCalendar
     import java.util.Date
-    value match {
+    val result = value match {
       case text: String =>
         val formatters = Seq(dateTime4, Named("yyyy-MM-dd HH:mm:ssZ", patternWithOffsetParsed), dateTimeIsoFormatter, dateTimeInternalExifFormatter2, dateTimeInternalExifFormatter, exifDateTimeFormatter3)
           def parseDateTime(format: Named[DateTimeFormatter]) = Try { DateTime.parse(text.trim, format) }
@@ -178,7 +190,26 @@ object Formats {
       case x =>
         throw new IllegalArgumentException(s"Can't convert [$value] of type [${value.getClass}] to DateTime.")
     }
+    result.map(validateDateTime)
   }
+
+  def validateDateTime(value: DateTime): DateTime =
+    validator match {
+      case Some(v) =>
+        v.validateDateTime(value).getOrElse(
+          throw new RuntimeException(s"Invalid date [$value]."))
+      case None =>
+        value
+    }
+
+  def validateLocalDateTime(value: LocalDateTime): LocalDateTime =
+    validator match {
+      case Some(v) =>
+        v.validateLocalDateTime(value).getOrElse(
+          throw new RuntimeException(s"Invalid date [$value]."))
+      case None =>
+        value
+    }
 
   private def failureDetail[U](detail: String, value: String, formatters: Seq[Any]): Throwable => Try[U] = f => Failure[U](new RuntimeException(s"Couldn't extract a ${detail} from value [$value] using formatters:\n\t${formatters.mkString("\n\t")}.", f))
   def parseInOrder[T, U](detail: String, formatters: Seq[T], parse: T => Try[U], value: String): Try[U] =

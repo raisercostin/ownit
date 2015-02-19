@@ -17,6 +17,7 @@ import org.raisercostin.util.io.NavigableLocation
 import org.raisercostin.tags.raw
 import org.raisercostin.util.io.InputLocation
 import org.joda.time.DateTime
+import org.joda.time.LocalDateTime
 
 @RunWith(classOf[JUnitRunner])
 class RenamerTest extends FunSuite {
@@ -26,7 +27,9 @@ class RenamerTest extends FunSuite {
     "exifFileNumberMajor" -> "437",
     "exifFileNumberMinor" -> "2366",
     "exifMIMEType" -> "image/jpg",
-    "fileExtension" -> "jpg"))
+    "fileExtension" -> "jpg",
+    "exifExifVersion" -> "0220",
+    "exifModel" -> "a"))
   val current = Locations.relative()
   import Renamer._
   val placeBadFiles = current.child("bad")
@@ -40,32 +43,33 @@ class RenamerTest extends FunSuite {
   def newPath(file: String, name: String = "byYearMonth", exif: Tags = defaultExif): String = {
     val f = allRenamers.find(_.folder == name).get
     val src = Locations.relative(file)
-    f.proposal(placeBadFiles, placeGoodFiles)(src, ExifTags(exif ++ Map("exifFileName" -> src.name, "fileExtension" -> src.extension))).standard(_.relativePath)
+    val others = Map("exifFileName" -> src.name, "fileExtension" -> src.extension)
+    f.proposal(placeBadFiles, placeGoodFiles)(src, ExifTags(exif ++ others)).standard(_.relativePath)
   }
 
   ignore("single") {
     assertEquals("""good/byYearMonth/pic.jpg""", newPath(""))
   }
   test("1 ascendent") {
-    assertEquals("""good/byYearMonth/---437-IMG_2366--pic.jpg""", newPath("pic.jpg"))
+    assertEquals("""good/byYearMonth/incomplete/437-IMG_2366--pic.jpg""", newPath("pic.jpg"))
   }
   test("1 ascendent and unknown file type") {
     assertEquals("""good/byYearMonth/unorganized/.picasa.ini""", newPath(".picasa.ini", exif = Tags(Map())))
   }
   test("2 ascendents") {
-    assertEquals("""good/byYearMonth/pA/---437-IMG_2366--pic.jpg""", newPath("pA/pic.jpg"))
+    assertEquals("""good/byYearMonth/incomplete/pA/437-IMG_2366--pic.jpg""", newPath("pA/pic.jpg"))
   }
   test("3 ascendents") {
-    assertEquals("""good/byYearMonth/pB--pA/---437-IMG_2366--pic.jpg""", newPath("pB/pA/pic.jpg"))
+    assertEquals("""good/byYearMonth/incomplete/pB--pA/437-IMG_2366--pic.jpg""", newPath("pB/pA/pic.jpg"))
   }
   test("4 ascendents") {
-    assertEquals("""good/byYearMonth/pC--pB--pA/---437-IMG_2366--pic.jpg""", newPath("pC/pB/pA/pic.jpg"))
+    assertEquals("""good/byYearMonth/incomplete/pC--pB--pA/437-IMG_2366--pic.jpg""", newPath("pC/pB/pA/pic.jpg"))
   }
   test("standard Simplified") {
-    assertEquals("""good/standardSimplified/projects/---437-IMG_2366--pic.jpg""", newPath("""2013/2013-XX-XX--old-todelete/2013 - projects/pic.jpg""", "standardSimplified"))
+    assertEquals("""good/standardSimplified/incomplete/projects/437-IMG_2366--pic.jpg""", newPath("""2013/2013-XX-XX--old-todelete/2013 - projects/pic.jpg""", "standardSimplified"))
   }
   test("standard Simplified with known folder name") {
-    assertEquals("""good/standardSimplified/---437-IMG_2366--2013-07-25--09-50-10--106-0027.jpg""", newPath("""437_2366/2013-07-25--09-50-10+XXXX---106-IMG_0027---at-XXX.jpg""", "standardSimplified"))
+    assertEquals("""good/standardSimplified/incomplete/437-IMG_2366--2013-07-25--09-50-10--106-0027.jpg""", newPath("""437_2366/2013-07-25--09-50-10+XXXX---106-IMG_0027---at-XXX.jpg""", "standardSimplified"))
   }
   test("byYearMonth date detection in path") {
     assertEquals("""good/byYearMonth/2013-08-August/2013-08-01--10-29-09+0000---437-IMG_2366.JPG""",
@@ -89,9 +93,20 @@ class RenamerTest extends FunSuite {
     assertEquals("0220", tags.exifVersion.get)
     assertEquals(DateTime.parse("2002-02-01T00:00:00.000Z"), tags.exifVersionDate.get)
     assert(tags.originalExif)
-    //assertEquals(None,tags.validDateTime(DateTime.parse("1980-02-01T00:00:00.000Z")))
-    //assertEquals(DateTime.parse("2002-02-01T00:00:00.000Z"),tags.validDateTime(DateTime.parse("2002-02-01T00:00:00.000Z")).get)
+    assertEquals(None, tags.validDateTime(DateTime.parse("1980-02-01T00:00:00.000Z")))
+    assertEquals(DateTime.parse("2002-02-01T00:00:00.000Z"), tags.validDateTime(DateTime.parse("2002-02-01T00:00:00.000Z")).get)
+    assertEquals(None, tags.validLocalDateTime(LocalDateTime.parse("1980-01-01T00:00:00.000")))
+    assertEquals(LocalDateTime.parse("2002-02-01T00:00:00.000"), tags.validLocalDateTime(LocalDateTime.parse("2002-02-01T00:00:00.000")).get)
     //if has a commonly used exif data but before exif standard like: 
-    assertEquals("""good/byYearMonth/1980-01-January--a/1980-01-01--00-00-03---108-IMG_3550--a.jpg""", newPath(src))
+    assertEquals(None, tags.dateTime)
+    assertEquals("""good/byYearMonth/incomplete/a/108-IMG_3550--a.jpg""", newPath(src))
+  }
+  test("bug3 - incomplete exif") {
+    val src = Locations.classpath("2006-k300/Imag014.jpg")
+    assertEquals("""good/byYearMonth/unorganized/2006-k300/Imag014.jpg""", newPath(src))
+  }
+  test("bug4 - incomplete exif") {
+    val src = Locations.classpath("2005/Picture 03.jpg")
+    assertEquals("""good/byYearMonth/unorganized/2005/Picture 03.jpg""", newPath(src))
   }
 }

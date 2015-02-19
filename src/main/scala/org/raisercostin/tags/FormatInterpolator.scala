@@ -89,7 +89,7 @@ object FormatInterpolator {
   //    println(s"fullSelector=$fullSelector")
   //    println(s"fullSection=$fullSection")
 }
-case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
+case class FormatInterpolator(val tags: Map[String, String], formatter:Formatter = Formats) {
   import FormatInterpolator._
   def apply(pattern: String): Try[String] = Try {
 	  //println(s"interpolate pattern=[$pattern]")
@@ -138,11 +138,13 @@ case class FormatInterpolator(val tags: Map[String, String]) extends AnyVal {
     val all: Iterable[String] = if (selector.isEmpty()) Seq("") else Splitter.on('|').split(selector)
     val convertors: List[String] = Splitter.on('|').trimResults().split(convertor.getOrElse("")).toList
     //println(s"expand[$all] with convertors[$convertors]")
-    all.toStream.flatMap(extractValue).headOption match {
-      case None => Failure(new RuntimeException(s"Couldn't find any value using [$selector]"))
-      case Some(value) =>
-        Formats.convert(value, convertors.headOption, convertors.drop(1).headOption)
+    val results = all.toStream.flatMap(extractValue).map{value=>
+      //case None => Failure(new RuntimeException(s"Couldn't find any value using [$selector]"))
+      //case Some(value) =>
+        formatter.convert(value, convertors.headOption, convertors.drop(1).headOption)
     }
+    results.filter(_.isSuccess).headOption.orElse(results.headOption).getOrElse(Failure(new RuntimeException(s"Couldn't find any value for $selector using formatter=$convertor")))
+    //???
   }
   private def extractValue(name: String): Option[String] =
     if (name.startsWith("$")) tags.get(name.stripPrefix("$")) else Some(name)

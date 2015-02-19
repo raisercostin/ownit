@@ -11,6 +11,8 @@ import org.joda.time.DateTimeZone
 import org.joda.time.Duration
 import com.google.common.primitives.Ints
 import org.joda.time.format.DateTimeFormatter
+import org.raisercostin.tags.Formatter
+import org.raisercostin.tags.Validator
 
 object ExifTags {
   /*
@@ -44,16 +46,21 @@ object ExifTags {
  | December 1998	2.1	Upgraded and expanded the storage format and attribute information. Added recommended compatibility details as a supplement to Version 2.0
  | February 2002	2.2	Added information to Version 2.1 to improve print finishing
  | September 2003	2.21	Added optional color space (Adobe RGB)
-""".stripMargin.split("\n").toList.drop(4).map { _.split("\t").toSeq }.map{
+""".stripMargin.split("\n").toList.drop(4).map { _.split("\t").toSeq }.map {
     case Seq(date, version, description) =>
       val versionInt = (version.toDouble * 100).toInt
-      Version(Formats.parseLocalDateTime("MMMM yyyy",date.trim).get.toDateTime(DateTimeZone.UTC),String.format("%04d",versionInt.asInstanceOf[Object]))
+      Version(Formats.parseLocalDateTime("MMMM yyyy", date.trim).get.toDateTime(DateTimeZone.UTC), String.format("%04d", versionInt.asInstanceOf[Object]))
   }.sortBy(_.version)
   //println(versions.mkString("\n"))
-  def availabilityDate(version:String):Option[DateTime] =  versions.filter(x=>x.version <= version).lastOption.map(_.date)
+  def availabilityDate(version: String): Option[DateTime] = versions.filter(x => x.version <= version).lastOption.map(_.date)
 }
-case class ExifTags(initialTags: Tags) {
+case class ExifTags(rootInitialTags: Tags) {
   import ExifTags._
+  val formatter = new Formats(Some(new Validator {
+    def validateDateTime(dateTime: DateTime): Option[DateTime] = validDateTime(dateTime)
+    def validateLocalDateTime(dateTime: LocalDateTime): Option[LocalDateTime] = validLocalDateTime(dateTime)
+  }))
+  val initialTags = rootInitialTags.copy(formatter = formatter)
   def deviceId: Option[String] = Some(initialTags.interpolate("exifModel:$exifModel|-exifCanonModelId:$exifCanonModelID|-exifProfileID:$exifProfileID|-exifDeviceModelDesc:$exifDeviceModelDesc|-exifDeviceModel:$exifDeviceModel|").get)
   lazy val localDateTime: Option[LocalDateTime] = initialTags.interpolate(
     FormatAnalyser.localDateTimeAnalyser).toOption.flatMap(x => initialTags.asLocalDateTime(x).toOption)
@@ -107,21 +114,38 @@ case class ExifTags(initialTags: Tags) {
 
   def isImage: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("image/")
   def isVideo: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("video/")
-  
-  def exifVersion:Option[String] = initialTags.getString("exifExifVersion")
-  def exifVersionDate:Option[DateTime] = exifVersion.flatMap{version => availabilityDate(version)}
-  def originalExif:Boolean = initialTags.getString("exifModel").isDefined
-  def getDateTime(tag: String):Option[DateTime] = intermediateTags.getDateTime(tag)
-  def getLocalDateTime(tag: String):Option[LocalDateTime] = intermediateTags.getLocalDateTime(tag)
-//  def getDateTime(tag: String):Option[DateTime] = validate(initialTags.getDateTime(tag))
-//  def validate(date:Option[DateTime]):Option[DateTime] = date.flatMap{validDateTime}
-//  def validDateTime(date:DateTime):Option[DateTime] = for{first <- exifVersionDate if !first.isAfter(date)} yield date
-//  def getLocalDateTime(tag: String):Option[LocalDateTime] = validate2(initialTags.getLocalDateTime(tag))
-//  def validate2(date:Option[LocalDateTime]):Option[LocalDateTime] = date.flatMap{validLocalDateTime}
-//  def validLocalDateTime(date:LocalDateTime):Option[LocalDateTime] = for{first <- exifVersionDate if !first.toLocalDateTime().isAfter(date)} yield date
 
-  def asDateTime(value: Try[String]): Try[DateTime] = value.map(initialTags.asDateTime(_).get)//.map{x=>validDateTime(x).get}
-  def asLocalDateTime(value: Try[String]): Try[LocalDateTime] = value.map(initialTags.asLocalDateTime(_).get)//.map{x=>validLocalDateTime(x).get}
+  def exifVersion: Option[String] = initialTags.getString("exifExifVersion")
+  def exifVersionDate: Option[DateTime] = exifVersion.flatMap { version => availabilityDate(version) }
+  def originalExif: Boolean = initialTags.getString("exifModel").isDefined
+  def getDateTime(tag: String): Option[DateTime] = intermediateTags.getDateTime(tag)
+  def getLocalDateTime(tag: String): Option[LocalDateTime] = intermediateTags.getLocalDateTime(tag)
+  //  def getDateTime(tag: String):Option[DateTime] = validate(initialTags.getDateTime(tag))
+  //  def validate(date:Option[DateTime]):Option[DateTime] = date.flatMap{validDateTime}
+  def validDateTime(date: DateTime): Option[DateTime] = exifVersionDate match {
+    case None =>
+      Some(date)
+    case Some(first) if !first.isAfter(date) =>
+      Some(date)
+    case _ =>
+      None
+  }
+  //  def getLocalDateTime(tag: String):Option[LocalDateTime] = validate2(initialTags.getLocalDateTime(tag))
+  //  def validate2(date:Option[LocalDateTime]):Option[LocalDateTime] = date.flatMap{validLocalDateTime}
+  def validLocalDateTime(date: LocalDateTime): Option[LocalDateTime] = exifVersionDate match {
+    case None =>
+      Some(date)
+    case Some(first) if !first.toLocalDateTime().isAfter(date) =>
+      Some(date)
+    case _ =>
+      None
+  }
+  //  {val a = for{first <- exifVersionDate if !first.toLocalDateTime().isAfter(date)} yield date
+  //    a.orElse(Some(date))
+  //  }
+
+  def asDateTime(value: Try[String]): Try[DateTime] = value.map(initialTags.asDateTime(_).get) //.map{x=>validDateTime(x).get}
+  def asLocalDateTime(value: Try[String]): Try[LocalDateTime] = value.map(initialTags.asLocalDateTime(_).get) //.map{x=>validLocalDateTime(x).get}
   def interpolateAsDateTime(value: String): Try[DateTime] = asDateTime(initialTags.interpolate(value + "(" + Formats.dateTimePattern + ")"))
   def interpolateAsLocalDateTime(value: String): Try[LocalDateTime] = asLocalDateTime(initialTags.interpolate(value + "(" + Formats.localDateTimeFormatterISO.name + ")"))
 }

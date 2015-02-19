@@ -44,7 +44,7 @@ class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues 
   }
   test("analyze format using interpolator") {
     assertEquals("Success(2015:01:06 11:44:08+0200)", FormatInterpolator(tags2)(FormatAnalyser.dateAnalyserNoFormat).toString)
-    assertEquals("$exifFileNumberMajor_$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#${fileExtension}|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate(MMdd).jpg", analyse("437_0106.jpg").get)
+    assertEquals("$exifFileNumberMajor_$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#${fileExtension}|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate(MMdd).jpg", analyse("437_0106.jpg").get)
   }
   test("exclude tags from analisys") {
     val tags = Tags(tags2)

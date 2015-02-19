@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLong
 object InternalRenamer {
   def main(args: Array[String]) = {
     //Renamer.main(Array("""d:\personal\photos-tofix\2006"""))
-    Renamer.main(Array("""z:\1-personal-pics-fixed\XXXX-problematic\""","""-proposed"""))
+    Renamer.main(Array("""z:\1-personal-pics\tofix10""", """-proposed"""))
   }
 }
 object Renamer {
@@ -94,7 +94,7 @@ object Renamer {
     }
 
   def organize2(fromPath: String, toRelativeOrAbsolute: String = "-proposed", debug: Boolean = false, filter: Option[String] = None) = try {
-    var all =  Map[String,AtomicLong]().withDefault(_=> new AtomicLong(0))
+    var all = Map[String, AtomicLong]().withDefault(_ => new AtomicLong(0))
     val start = new DateTime()
     //if(debug)
     println(s"organize [$fromPath] -> [$toRelativeOrAbsolute]")
@@ -125,11 +125,11 @@ object Renamer {
         val file = file1.toFile
         val src = Locations.file(file)
         val res = process(src, from, placeBadFiles, placeGoodFiles)(debug)
-        res.map{tags=>
-          tags.tags.tags.keys.foreach{key=>
+        res.map { tags =>
+          tags.tags.tags.keys.foreach { key =>
             val value = all(key)
             value.incrementAndGet()
-            all = all.updated(key,value)
+            all = all.updated(key, value)
           }
         }
         placeGoodFiles.child("tags2.txt").deleteIfExists.writeContent(all.toSeq.sortBy(-_._2.get()).mkString("\n"))
@@ -150,10 +150,10 @@ object Renamer {
           println(f.getMessage)
     }
     */
-    val period = new Period(start,new DateTime())
+    val period = new Period(start, new DateTime())
     val histo = all.toSeq.sortBy(-_._2.get())
     placeGoodFiles.child("tags.txt").renamedIfExists.writeContent(histo.mkString("\n"))
-    println("done in "+PeriodFormat.getDefault().print(period.normalizedStandard()))
+    println("done in " + PeriodFormat.getDefault().print(period.normalizedStandard()))
   }
 
   val standardNameXXXX = dateAnalyser + "$exifFileNumberMajor|(---%%|---XXX)$exifFileNumberMinor|XXXX(-IMG_%%)$compClosestLocation|XXX(---at-%%)$compRemaining|(--%%|)$fileExtension(.%%)"
@@ -177,7 +177,7 @@ object Renamer {
     //Formatter("byCounterKeepStructure-XXXX", _ => "$exifFileNumberMajor|(%%|XXX)$exifFileNumberMinor|(-%%|-XXXX)$compRemaining|(-%%|)$fileExtension(.%%)", true)
     )
 
-  def process(src: FileLocation, from: FileLocation, placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(debug: Boolean)(implicit devices: DevicesDao):Try[ExifTags] = {
+  def process(src: FileLocation, from: FileLocation, placeBadFiles: FileLocation, placeGoodFiles: FileLocation)(debug: Boolean)(implicit devices: DevicesDao): Try[ExifTags] = {
     println("analyze " + src.absolute + " ...")
     val newName = Try {
       val tags = raw.loadExifTags(src)
@@ -217,10 +217,10 @@ object Renamer {
       var clean = tags.cleanFormat(analysedCategory).replaceAllLiterally(Locations.SEP_STANDARD, "--")
       clean = clean.replaceAll("""\d+""", "")
       clean = tags.cleanFormat(clean)
-      clean = clean.replaceAllLiterally("PRIVATE--AVCHD--BDMV--STREAM","") 
-      clean = clean.replaceAllLiterally("CANON","") 
-      clean = clean.replaceAllLiterally("FUJI","") 
-      clean = clean.replaceAllLiterally("camera uploads","") 
+      clean = clean.replaceAllLiterally("PRIVATE--AVCHD--BDMV--STREAM", "")
+      clean = clean.replaceAllLiterally("CANON", "")
+      clean = clean.replaceAllLiterally("FUJI", "")
+      clean = clean.replaceAllLiterally("camera uploads", "")
       val remaining = Option(clean).filter(_.length > 0)
       remaining
     }
@@ -235,33 +235,50 @@ object Renamer {
       //
       //println(tags.tags.tags.mkString("\n"))
       val imageOrVideo = tags.isImage || tags.isVideo
-      val placeGoodFiles = rootPlaceGoodFiles.child(folder)
-      if (imageOrVideo) {
+      val placeGoodFiles1 = rootPlaceGoodFiles.child(folder)
+      if (imageOrVideo && tags.exifVersion.isDefined) {
         val pattern = patternSupplier(tags)
-        val newName = tags.interpolate(pattern).get
-        val category = path2.parent.standard(_.relativePath)
-        val remaining = remainingFolder(category, tags)
-        val basePath = Locations.relative(newName)
-        val baseFolder = basePath.parent
-        val baseName = basePath.name
-        val place = keepStructure match {
-          case KeepFolder =>
-            placeGoodFiles.child(baseFolder).child(category)
-          case AnalysedFolder =>
-            if (imageOrVideo && baseFolder.nonEmpty)
-              placeGoodFiles.child(baseFolder).withBaseName2(x => remaining.map { y => if (x.nonEmpty && y.nonEmpty) x + "--" + y else x + y })
-            else
-              placeGoodFiles.child(baseFolder).child(remaining)
-          case NoFolder =>
-            placeGoodFiles.child(baseFolder)
+        val newName1 = tags.interpolate(pattern).get
+        val hasDateInformation = !newName1.startsWith("--")
+        val newName = newName1.stripPrefix("---").stripPrefix("--")
+        if (hasDateInformation || newName != path2.name) {
+          //if (tags.exifVersion.isDefined) {
+          val category = path2.parent.standard(_.relativePath)
+          val remaining = remainingFolder(category, tags)
+          val basePath = Locations.relative(newName)
+          val baseFolder = basePath.parent
+          val baseName = basePath.name
+          val placeGoodFiles2 = if (hasDateInformation) placeGoodFiles1 else placeGoodFiles1.child("incomplete")
+          val place = keepStructure match {
+            case KeepFolder =>
+              placeGoodFiles2.child(baseFolder).child(category)
+            case AnalysedFolder =>
+              if (imageOrVideo && baseFolder.nonEmpty)
+                placeGoodFiles2.child(baseFolder).withBaseName2(x => remaining.map { y => if (x.nonEmpty && y.nonEmpty) x + "--" + y else x + y })
+              else
+                placeGoodFiles2.child(baseFolder).child(remaining)
+            case NoFolder =>
+              placeGoodFiles2.child(baseFolder)
+          }
+          place.child(baseName)
+        } else {
+          keepStructure match {
+            case KeepFolder =>
+              placeGoodFiles1.child(path2)
+            case _ =>
+              placeGoodFiles1.child("unorganized").child(path2)
+          }
         }
-        place.child(baseName)
+        //        } else {
+        //          placeGoodFiles1.child("unorganized").child(path2)
+        //          //placeGoodFiles1.child("noexif")
+        //        }
       } else {
         keepStructure match {
           case KeepFolder =>
-            placeGoodFiles.child(path2)
+            placeGoodFiles1.child(path2)
           case _ =>
-            placeGoodFiles.child("unorganized").child(path2)
+            placeGoodFiles1.child("unorganized").child(path2)
         }
       }
     }

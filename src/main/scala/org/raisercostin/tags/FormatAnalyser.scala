@@ -22,10 +22,14 @@ object FormatAnalyser {
     result
   }
   //exifFileModifyDate might be wrong but still useful
-  val dateAnalyser = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate(%Y-%m-%d--%H-%M-%S'+XXXX')|$exifDateTimeDigitized(%Y-%m-%d--%H-%M-%SZ)|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S'+XXXX')|$exifFileModifyDate(%Y-%m-%d--%H-%M-%SZ)|(XXXX-XX-XX--XX-XX-XX+XXXX)"
-  val dateAnalyserNoFormat = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate"
-  val dateAnalyserNoXXXX = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S)|$exifFileModifyDate|(%Y-%m-%d--%H-%M-%SZ|)"
-  val localDateTimeAnalyser = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifDateTimeDigitized|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate(" + Formats.localDateTimeInternalExifFormatterPattern + ")"
+  //val dateAnalyser = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate(%Y-%m-%d--%H-%M-%S'+XXXX')|$exifDateTimeDigitized(%Y-%m-%d--%H-%M-%SZ)|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S'+XXXX')|$exifFileModifyDate(%Y-%m-%d--%H-%M-%SZ)|(XXXX-XX-XX--XX-XX-XX+XXXX)"
+  val dateAnalyser = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate(%Y-%m-%d--%H-%M-%S'+XXXX')|$exifDateTimeDigitized(%Y-%m-%d--%H-%M-%SZ)|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S'+XXXX')|(XXXX-XX-XX--XX-XX-XX+XXXX)"
+  //val dateAnalyserNoFormat = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate"
+  val dateAnalyserNoFormat = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate"
+  //val dateAnalyserNoXXXX = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate(%Y-%m-%d--%H-%M-%S)|$exifFileModifyDate|(%Y-%m-%d--%H-%M-%SZ|)"
+  val dateAnalyserNoXXXX = "$dateTime(%Y-%m-%d--%H-%M-%SZ)|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifModifyDate#THM|$exifModifyDate|(%Y-%m-%d--%H-%M-%S|)"
+  //val localDateTimeAnalyser = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifDateTimeDigitized|$exifModifyDate#THM|$exifModifyDate|$exifFileModifyDate(" + Formats.localDateTimeInternalExifFormatterPattern + ")"
+  val localDateTimeAnalyser = "$dateTime|$localDateTime|$exifE36867|$exifDateTimeOriginal#THM|$exifDateTimeOriginal|$pathLocalDateTime|$exifCreateDate|$exifDateTimeDigitized|$exifModifyDate#THM|$exifModifyDate(" + Formats.localDateTimeInternalExifFormatterPattern + ")"
 }
 protected case class DateTimeResult(result: String, mappings: Int, message: Option[String])
 case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
