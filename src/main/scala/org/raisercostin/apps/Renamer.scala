@@ -27,8 +27,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 object InternalRenamer {
   def main(args: Array[String]) = {
-    //Renamer.main(Array("""d:\personal\photos-tofix\2006"""))
-    Renamer.main(Array("""z:\1-personal-pics\tofix10""", """-proposed"""))
+    Renamer.main(Array("""d:\personal\photos-tofix\others"""))
+    //Renamer.main(Array("""z:\1-personal-pics\tofix16""", """-proposed"""))
   }
 }
 object Renamer {
@@ -132,7 +132,7 @@ object Renamer {
             all = all.updated(key, value)
           }
         }
-        placeGoodFiles.child("tags2.txt").deleteIfExists.writeContent(all.toSeq.sortBy(-_._2.get()).mkString("\n"))
+        placeGoodFiles.child("tags2.txt").deleteOrRenameIfExists.writeContent(all.toSeq.sortBy(-_._2.get()).mkString("\n"))
         res.recover {
           case e =>
             if (debug)
@@ -183,7 +183,7 @@ object Renamer {
       val tags = raw.loadExifTags(src)
       val maxDateTime = new DateTime(2015, 8, 1, 0, 0, 0)
       if (tags.localDateTime.map { _.toDateTime().isAfter(maxDateTime) }.getOrElse(false)) {
-        throw new RuntimeException(s"The application cannot process files older than ${maxDateTime.toString("yyyy-MM-dd")}. You should update the application.")
+        throw new RuntimeException(s"The application cannot process files newer than ${maxDateTime.toString("yyyy-MM-dd")}. The file had localDateTime ${tags.localDateTime}. You should update the application.")
       }
       devices.checkDeviceId(tags)
       println("\tdetected format\t" + tags.analyse(src.name).get)

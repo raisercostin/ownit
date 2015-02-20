@@ -122,10 +122,71 @@ c/e/f.txt""".replaceAll("\r", ""),
     Locations.relative("folder").child("aaaa").parent.raw.toString should equal("folder")
   }
   test("relative computation") {
-    assertEquals("",Locations.relative("path").extractPrefix(Locations.relative("path")).relativePath)
-    assertEquals("",Locations.relative("img.jpg").extractPrefix(Locations.relative("img.jpg")).relativePath)
-    assertEquals("/b/img.jpg",Locations.relative("a/b/img.jpg").extractPrefix(Locations.relative("a")).relativePath)
-    assertEquals("/img.jpg",Locations.relative("a/b/img.jpg").extractPrefix(Locations.relative("a/b")).relativePath)
-    assertEquals("b\\img.jpg",Locations.relative("a\\b\\img.jpg").extractPrefix(Locations.relative("a")).relativePath)
+    assertEquals("", Locations.relative("path").extractPrefix(Locations.relative("path")).relativePath)
+    assertEquals("", Locations.relative("img.jpg").extractPrefix(Locations.relative("img.jpg")).relativePath)
+    assertEquals("/b/img.jpg", Locations.relative("a/b/img.jpg").extractPrefix(Locations.relative("a")).relativePath)
+    assertEquals("/img.jpg", Locations.relative("a/b/img.jpg").extractPrefix(Locations.relative("a/b")).relativePath)
+    assertEquals("b\\img.jpg", Locations.relative("a\\b\\img.jpg").extractPrefix(Locations.relative("a")).relativePath)
+  }
+
+  test("inheritance") {
+    //How can I define an inherited operation that returns the current type (and not current type instance) in scala?
+    //I already tried to return this.type but in case I need to create a new instance will not work.
+    object Test {
+      def main(args: Array[String]) {
+        trait A {
+          //return current instance type
+          def op: this.type = { println("opA"); this }
+          //return current type (but must be overriden) 
+          def op2: A = { println("op2A"); this }
+          //return current type (without the need to override)
+          def op3[T >: A]: T = { println("opA"); this }
+        }
+        case class B extends A {
+          def doB = println("doB")
+
+          override def op: this.type = {
+            println("opB");
+            this
+            //new B() - compilation error: type mismatch;  found: B  required: B.this.type 
+          }
+          override def op2: B = {
+            println("op2B");
+            new B()
+            //here it works
+          }
+          override def op3[T >: B]: B = {
+            println("op3B");
+            //here it works
+            new B()
+          }
+        }
+        //Inherits both op2 and op3 from A but op2 and op3 need to return a C type 
+        case class C extends A {
+          def doC = println("doC")
+        }
+        B().op.doB
+        C().op.doC
+
+        B().op2.doB
+        //C().op2.doC //compilation error => value doC is not a member of A
+
+        B().op3.doB
+        //C().op3.doC //compilation error => value doC is not a member of type parameter T
+
+        /**
+         * Output:
+         * opB
+         * doB
+         * opA
+         * doC
+         * op2B
+         * doB
+         * op3B
+         * doB
+         */
+      }
+    }
+    Test.main(Array())
   }
 }

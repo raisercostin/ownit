@@ -7,15 +7,16 @@ object FormatAnalyser {
   val tagFileModificationDateTime = "fileModification"
   private val dateFormat = "yyyy-MM-dd--HH-mm-ss-ZZ"
   def cleanFormat(format: String) = {
+    val specialChars = " '._-"
     //this assumes that usually after $ variable a separator might come
     var result = format
-    result = result.replaceAll("""\$\{[^}]+\}[._-]?""", "")
+    result = result.replaceAll("""\$\{[^}]+\}["""+specialChars+"""]?""", "")
     result = result.replaceAll("""\$[a-zA-Z0-9#|]+\([^)]+\)""", "")
     result = result.replaceAll("""\$[a-zA-Z0-9#|]+""", "")
-    result = result.replaceAll("^[ ._-]+", "")
-    result = result.replaceAll("[ ._-]+$", "")
-    result = result.replaceAll("""/[ ._-]+""", "/")
-    result = result.replaceAll("""[ ._-]+/""", "/")
+    result = result.replaceAll(s"^[$specialChars]+", "")
+    result = result.replaceAll("["+specialChars+"]+$", "")
+    result = result.replaceAll(s"""/[$specialChars]+""", "/")
+    result = result.replaceAll(s"""[$specialChars]+/""", "/")
     result = result.replaceAll("/+", "/")
     result = result.replaceAll("^/$", "")
     result = result.trim

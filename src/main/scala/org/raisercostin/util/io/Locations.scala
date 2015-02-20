@@ -36,16 +36,15 @@ import java.io.FileSystem
  * - file separator: win,linux,osx - internal standard: / (like linux, fewer colisions with string escaping in java)
  * - file name case sensitivity - internal standard: case sensible (in windows there will not be any problem)
  * - win 8.3 file names vs. full file names - internal standard: utf-8
- * 
+ *
  * In principle should be agnostic to these aspects and only at runtime will depend on the local environment.
  */
-package object io{
-  
+package object io {
+
 }
 
-
 import Locations._
-trait NavigableLocation {self=>
+trait NavigableLocation { self =>
   def nameAndBefore: String
   def parent: this.type
   def child(child: String): this.type
@@ -76,11 +75,11 @@ trait NavigableLocation {self=>
   def baseName: String = FilenameUtils.getBaseName(nameAndBefore)
   def parentName: String = //toFile.getParentFile.getAbsolutePath
     Option(FilenameUtils.getFullPathNoEndSeparator(nameAndBefore)).getOrElse("")
-  def extractPrefix(ancestor: NavigableLocation):RelativeLocation = relative(extractAncestor(ancestor).get.foldLeft("")((x, y) => (if (x.isEmpty) "" else (x + SEP)) + y))
+  def extractPrefix(ancestor: NavigableLocation): RelativeLocation = relative(extractAncestor(ancestor).get.foldLeft("")((x, y) => (if (x.isEmpty) "" else (x + SEP)) + y))
   def extractAncestor(ancestor: NavigableLocation): Try[Seq[String]] = diff(nameAndBefore, ancestor.nameAndBefore).map { _.split(Pattern.quote(SEP)).filterNot(_.trim.isEmpty) }
   def diff(text: String, prefix: String) = if (text.startsWith(prefix)) Success(text.substring(prefix.length)) else Failure(new RuntimeException(s"Text [$text] doesn't start with [$prefix]."))
   def withBaseName(baseNameSupplier: String => String): this.type = parent.child(withExtension2(baseNameSupplier(baseName), extension))
-  def withBaseName2(baseNameSupplier: String => Option[String]): this.type = baseNameSupplier(baseName).map{x=>parent.child(withExtension2(x, extension))}.getOrElse(self).asInstanceOf[this.type]
+  def withBaseName2(baseNameSupplier: String => Option[String]): this.type = baseNameSupplier(baseName).map { x => parent.child(withExtension2(x, extension)) }.getOrElse(self).asInstanceOf[this.type]
   def withName(nameSupplier: String => String): this.type = parent.child(nameSupplier(name))
   def withExtension(extensionSupplier: String => String): this.type = parent.child(withExtension2(baseName, extensionSupplier(extension)))
   protected def withExtension2(name: String, ext: String) =
@@ -89,10 +88,10 @@ trait NavigableLocation {self=>
     else name
   def standard(selector: this.type => String): String = Locations.standard(selector(this))
 }
-trait AbsoluteLocation{
+trait AbsoluteLocation {
   def path: String
 }
-trait AbsoluteBaseLocation extends BaseLocation with AbsoluteLocation{
+trait AbsoluteBaseLocation extends BaseLocation with AbsoluteLocation {
   /**Gets only the path part (without drive name on windows for example), and without the name of file*/
   def path: String = FilenameUtils.getPath(absolute)
 }
@@ -149,7 +148,7 @@ trait BaseLocation extends NavigableLocation {
         var newDestFile = destFile
         var counter = 1
         while (newDestFile.exists) {
-          newDestFile = destFile.withBaseName{baseName:String => (baseName + "-" + counter) }
+          newDestFile = destFile.withBaseName { baseName: String => (baseName + "-" + counter) }
           counter += 1
         }
         newDestFile
@@ -254,6 +253,9 @@ trait OutputLocation extends BaseLocation {
     FileUtils.moveFile(toFile, dest.toFile)
     this
   }
+  def deleteOrRenameIfExists: OutputLocation = {
+    Try { deleteIfExists }.recover { case _ => renamedIfExists }.get
+  }
   def deleteIfExists: this.type = {
     if (exists) {
       logger.info(s"delete existing $absolute")
@@ -297,11 +299,11 @@ trait RelativeLocationLike extends BaseLocation {
   def raw: String = relativePath
   def parent: this.type = new RelativeLocation(parentName).asInstanceOf[this.type]
   def child(child: String): this.type = {
-    require(child.trim.nonEmpty,s"An empty child [$child] cannot be added.")
-  	new RelativeLocation(if (relativePath.isEmpty) child else relativePath + SEP + child).asInstanceOf[this.type]
+    require(child.trim.nonEmpty, s"An empty child [$child] cannot be added.")
+    new RelativeLocation(if (relativePath.isEmpty) child else relativePath + SEP + child).asInstanceOf[this.type]
   }
   def isEmpty: Boolean = relativePath.isEmpty
-  def nonEmpty:Boolean = !isEmpty
+  def nonEmpty: Boolean = !isEmpty
 }
 case class RelativeLocation(relativePath: String) extends RelativeLocationLike
 case class FileLocation(fileFullPath: String, append: Boolean = false) extends FileLocationLike {
@@ -491,5 +493,5 @@ object Locations {
 
   def relative(path: String = ""): RelativeLocation = RelativeLocation(path)
   def current(relative: String): FileLocation = file(new File(new File("."), relative).getCanonicalPath())
-  def standard(path:String):String = path.replaceAllLiterally(SEP, SEP_STANDARD)
+  def standard(path: String): String = path.replaceAllLiterally(SEP, SEP_STANDARD)
 }
