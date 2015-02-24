@@ -27,8 +27,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 object InternalRenamer {
   def main(args: Array[String]) = {
-    Renamer.main(Array("""d:\personal\photos-tofix\others"""))
-    //Renamer.main(Array("""z:\1-personal-pics\tofix16""", """-proposed"""))
+    //Renamer.main(Array("""d:\personal\photos-tofix\others"""))
+    Renamer.main(Array("""z:\1-personal-pics\tofix16""", """-proposed"""))
   }
 }
 object Renamer {

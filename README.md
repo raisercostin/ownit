@@ -26,3 +26,7 @@ sbt oneJar
 ownit.bat d:\personal\photos2\ d:\personal\photos2-george
 - display exif info for a file
 ownit.bat d:\personal\photos2-george-bad\Camera\20140906_000621.jpg
+
+- release
+1. modify version
+2. sbt oneJar

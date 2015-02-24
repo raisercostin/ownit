@@ -5,7 +5,7 @@ organization := "org.raisercostin"
 
 name := "ownit"
 
-version := "0.3"
+version := "0.4"
 
 scalaVersion := "2.10.2"
 
@@ -21,13 +21,14 @@ libraryDependencies ++= Seq(
 	,"org.apache.sanselan" % "sanselan" % "0.97-incubator"
 	,"com.thenewmotion" % "time_2.10" % "2.4"
 	//,"com.thebuzzmedia" % "exiftool-lib" % "1.1"
-	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.8" exclude("org.slf4j","slf4j-log4j12")
+	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.9" exclude("org.slf4j","slf4j-log4j12")
 	//for guava
 	,"com.google.code.findbugs" % "jsr305" % "2.0.3"
 	//,"org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3"
     //,"com.netflix.rxjava" % "rxjava-scala" % "0.15.0"
 	,"org.scala-lang" % "scala-swing" % scalaVersion.value
     //,"org.scalacheck" %% "scalacheck" % "1.12.2" % "test"
+	,"org.raisercostin" % "raisercostin-utils" % "0.3"
 )
 
 sbtPlugin := true
