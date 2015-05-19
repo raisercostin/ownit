@@ -23,9 +23,9 @@ $<tag1>|<tag2>|...|<tagN>(<microformat>)
 - create executable
 sbt oneJar
 - propose new organized folder without modifying source folder
-ownit.bat d:\personal\photos2\ d:\personal\photos2-george
+organize.bat d:\personal\photos2\ d:\personal\photos2-george
 - display exif info for a file
-ownit.bat d:\personal\photos2-george-bad\Camera\20140906_000621.jpg
+organize.bat d:\personal\photos2-george-bad\Camera\20140906_000621.jpg
 
 - release
 1. modify version
