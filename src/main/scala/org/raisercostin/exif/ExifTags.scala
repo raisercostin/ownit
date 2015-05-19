@@ -16,7 +16,7 @@ import org.raisercostin.tags.Validator
 
 object ExifTags {
   /*
-   * To have in ExifTags all methods that are present on Tags and "delegate" to them. 
+   * To have in ExifTags all methods that are present on Tags and "delegate" to them.
    * http://jackcoughonsoftware.blogspot.ro/2008/11/using-scala-implicits-to-replace.html
    */
   implicit def delegateToTag(exifTags: ExifTags) = exifTags.tags
@@ -115,6 +115,7 @@ case class ExifTags(rootInitialTags: Tags) {
   def isImage: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("image/")
   def isVideo: Boolean = initialTags.getString("exifMIMEType").getOrElse("").startsWith("video/")
 
+  def hasExif: Boolean = initialTags.getString("exifError").isEmpty
   def exifVersion: Option[String] = initialTags.getString("exifExifVersion")
   def exifVersionDate: Option[DateTime] = exifVersion.flatMap { version => availabilityDate(version) }
   def originalExif: Boolean = initialTags.getString("exifModel").isDefined

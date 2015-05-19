@@ -3,7 +3,7 @@ package org.raisercostin.tags
 import scala.util.{ Try, Failure }
 import scala.util.Success
 import org.junit.Assert
-import scala.util.parsing.combinator.RegexParsers
+//import scala.util.parsing.combinator.RegexParsers
 import scala.util.Failure
 import scala.util.Success
 /**
@@ -31,7 +31,7 @@ import scala.util.Success
 //todo use idiomatic matching http://stackoverflow.com/questions/15640555/regex-pattern-matching-with-a-variable-number-of-matching-capturing-groups
 
 //object InterpolatorParser extends RegexParsers {
-//  def word:Parser[String] = """\$(\w(?:\w|[#])*)""".r 
+//  def word:Parser[String] = """\$(\w(?:\w|[#])*)""".r
 //  def words:Parser[Seq[String]] = word ~ opt("|" ~ word) ^^ {case word1 ~ opt("|" ~ word2) => Seq(word1,word2)}
 //  def number: Parser[Double] = """\d+(\.\d*)?""".r ^^ { _.toDouble }
 //  def factor: Parser[Double] = number | "(" ~> expr <~ ")"

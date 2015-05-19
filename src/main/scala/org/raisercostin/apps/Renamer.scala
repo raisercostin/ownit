@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLong
 object InternalRenamer {
   def main(args: Array[String]) = {
     //Renamer.main(Array("""d:\personal\photos-tofix\others"""))
-    Renamer.main(Array("""z:\1-personal-pics\tofix16""", """-proposed"""))
+    Renamer.main(Array("""z:\1-personal-sound""", """-proposed"""))
   }
 }
 object Renamer {
@@ -100,7 +100,7 @@ object Renamer {
     println(s"organize [$fromPath] -> [$toRelativeOrAbsolute]")
     val cities = Locations.classpath("cities1000.zip")
     println(cities)
-    //if(debug) {} 
+    //if(debug) {}
     val oldValue = Option(java.lang.System.getProperty(ExifToolNew3.ENV_EXIF_TOOL_PATH)).filter(_.nonEmpty)
     if (!oldValue.isDefined) {
       val srcExifTool = Locations.classpath("exiftool2.exe")
@@ -143,7 +143,7 @@ object Renamer {
     }
     /*
      .filter(_.isFailure).map {
-      case Failure(f) => 
+      case Failure(f) =>
         if(debug)
           dump(f)
         else
@@ -236,7 +236,7 @@ object Renamer {
       //println(tags.tags.tags.mkString("\n"))
       val imageOrVideo = tags.isImage || tags.isVideo
       val placeGoodFiles1 = rootPlaceGoodFiles.child(folder)
-      if (imageOrVideo && tags.exifVersion.isDefined) {
+      if (imageOrVideo && tags.hasExif) {
         val pattern = patternSupplier(tags)
         val newName1 = tags.interpolate(pattern).get
         val hasDateInformation = !newName1.startsWith("--")
