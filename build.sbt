@@ -38,11 +38,7 @@ libraryDependencies ++= Seq(
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"))
 resolvers += "raisercostin resolver" at "http://dl.bintray.com/raisercostin/maven"
 resolvers += "thenewmotion" at "http://nexus.thenewmotion.com/content/repositories/releases-public"
-//resolvers ++= Seq(
-//	"thenewmotion" at "http://nexus.thenewmotion.com/content/repositories/releases-public"
-//	//,"The Buzz Media Maven Repository" at "http://maven.thebuzzmedia.com"
-//	,"raisercostin" at "https://raisercostin.googlecode.com/svn/maven2"
-//)
+resolvers += "The Buzz Media Maven Repository" at "http://maven.thebuzzmedia.com"
 
 pomExtra := (
   <scm>
