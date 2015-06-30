@@ -8,17 +8,14 @@ import java.util.regex.Pattern
 import scala.collection.immutable.TreeMap
 import org.joda.time.DateTimeZone
 import org.apache.commons.io.filefilter.RegexFileFilter
-import org.raisercostin.util.io.Locations
+import org.raisercostin.jedi._
+import org.raisercostin.jedi.Locations._
 import org.raisercostin.exif.ExifTags
 import org.raisercostin.tags.raw
-import org.raisercostin.util.io.FileLocation
 import org.raisercostin.tags.FormatAnalyser._
-import org.raisercostin.util.io.OutputLocation
 import org.joda.time.DateTime
 import com.thebuzzmedia.exiftool.ExifToolNew3
 import scala.collection.immutable.StringOps
-import org.raisercostin.util.io.NavigableLocation
-import org.raisercostin.util.io.RelativeLocation
 import org.joda.time.Duration
 import org.joda.time.format.PeriodFormat
 import org.joda.time.Period
@@ -160,7 +157,7 @@ object Renamer {
   val standardName = dateAnalyserNoXXXX + "$exifFileNumberMajor|(---%%|)$exifFileNumberMinor|(-IMG_%%|)$compClosestLocation|(---at-%%|)$compRemaining|(--%%|)$fileExtension(.%%)"
 
   val allRenamers = Seq(
-    Formatter("byYearMonth", tags => tags.dateGroup2 + "|(yyyy-MM-MMMM'" + Locations.SEP_STANDARD + "'|)" + standardName, AnalysedFolder),
+    Formatter("byYearMonth", tags => tags.dateGroup2 + "|(yyyy-MM-MMMM'/'|)" + standardName, AnalysedFolder),
     //
     //Formatter("flat-XXXX", _ => standardNameXXXX, false),
     Formatter("flat", _ => standardName, NoFolder),
@@ -189,7 +186,7 @@ object Renamer {
       println("\tdetected format\t" + tags.analyse(src.name).get)
       allRenamers.foreach { formatter =>
         val name = formatter.folder
-        val path2 = src.extractPrefix(from)
+        val path2 = src.extractPrefix(from).get
         val newDestFile = formatter.proposal(placeBadFiles.withBaseName(_ + "-" + name), placeGoodFiles)(path2, tags).mkdirOnParentIfNecessary.renamedIfExists
         val ANSI_BACK = "" //"\u001B[1F";
         //println(ANSI_BACK + "\t"+name.padTo(30,' ')+"> smartcopy to\t" + newDestFile.absolute)
@@ -201,7 +198,7 @@ object Renamer {
     newName.recoverWith {
       case e =>
         e.printStackTrace()
-        placeBadFiles.child(src extractPrefix (from)).mkdirOnParentIfNecessary.inspect(x => println("bad file " + x + " with error " + e.getMessage())).copyFromAsHardLink(src)
+        placeBadFiles.child(src.extractPrefix(from).get).mkdirOnParentIfNecessary.inspect(x => println("bad file " + x + " with error " + e.getMessage())).copyFromAsHardLink(src)
         Failure(e)
     }
   }
@@ -214,7 +211,7 @@ object Renamer {
     def remainingFolder(category: String, tags: ExifTags) = {
       val analysedCategory = tags.analyse(category, Seq("compClosestLocation")).getOrElse(category)
       //println(analysedCategory)
-      var clean = tags.cleanFormat(analysedCategory).replaceAllLiterally(Locations.SEP_STANDARD, "--")
+      var clean = tags.cleanFormat(analysedCategory).replaceAllLiterally("/", "--")
       clean = clean.replaceAll("""\d+""", "")
       clean = tags.cleanFormat(clean)
       clean = clean.replaceAllLiterally("PRIVATE--AVCHD--BDMV--STREAM", "")

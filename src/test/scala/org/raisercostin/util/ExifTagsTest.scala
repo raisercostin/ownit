@@ -4,7 +4,7 @@ import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
 import org.raisercostin.tags.raw
-import org.raisercostin.util.io.Locations
+import org.raisercostin.jedi.Locations
 import org.raisercostin.util.gps.Gps
 import org.raisercostin.tags.Formats
 import org.joda.time.DateTimeZone
@@ -165,7 +165,8 @@ class ExifTagsTest extends FunSuite {
     println(tags.tags.tags.mkString("\n"))
     assertEquals("+02:00", tags.getDateTimeZone("dateTimeZone").get.toString)
     assertEquals("+0200", Formats.toSimplified(tags.getDateTimeZone("dateTimeZone").get))
-    assertEquals("sample2-${dateTime+yyyy}-${dateTime+MM}-${dateTime+dd}--${dateTime+HH}-${dateTime+mm}-${dateTime+ss}${dateTimeZone}${const:---XXX-IMG_XXXX}${const:---at-}${compClosestLocation}--Strada Basarabiei.${fileExtension}", tags.compDetectedFormat.get)
+    //assertEquals("sample2-${dateTime+yyyy}-${dateTime+MM}-${dateTime+dd}--${dateTime+HH}-${dateTime+mm}-${dateTime+ss}${dateTimeZone}${const:---XXX-IMG_XXXX}${const:---at-}${compClosestLocation}--Strada Basarabiei.${fileExtension}", tags.compDetectedFormat.get)
+    assertEquals("sample2-${exifDateTimeOriginal+yyyy}-${exifDateTimeOriginal+MM}-${exifDateTimeOriginal+dd}--${exifDateTimeOriginal+HH}-${exifDateTimeOriginal+mm}-${exifDateTimeOriginal+ss}${dateTimeZone}${const:---XXX-IMG_XXXX}${const:---at-}${compClosestLocation}--Strada Basarabiei.${fileExtension}", tags.compDetectedFormat.get)
     assertEquals("sample2---Strada Basarabiei", tags.compRemaining.get.get)
     assertEquals("2013-12-29--12-49-06+0200---XXX-IMG_XXXX---at-Geamăna--sample2---Strada Basarabiei.jpg", tags.interpolate(FormatAnalyser.dateAnalyser + "---$exifFileNumberMajor|(%%|XXX)-IMG_$exifFileNumberMinor|(%%|XXXX)---at-$compClosestLocation|(%%|XXX)$compRemaining|(--%%|)$fileExtension(.%%)").get)
   }

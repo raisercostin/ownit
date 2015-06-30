@@ -1,7 +1,6 @@
 package org.raisercostin.util.gps
 
-import org.raisercostin.util.io.InputLocation
-import org.raisercostin.util.io.Locations
+import org.raisercostin.jedi._
 
 case class Distance(meters: Double) {
   def toInternational =
@@ -13,7 +12,7 @@ case class Distance(meters: Double) {
 object Gps {
   //http://download.geonames.org/export/dump/cities1000.zip
   lazy val locations = fromFile(Locations.classpath("cities1000.zip").unzip)
-  def fromFile(src: InputLocation): Seq[Gps] = {
+  def fromFile(src: NavigableInputLocation): Seq[Gps] = {
     //    0         1            2          3                       4          5    6   7   8       9                10           11         12            13
     //3039154	El Tarter	El Tarter	Ehl Tarter,Эл Тартер	42.57952	1.65362	P	PPL	AD		02				1052		1721	Europe/Andorra	2012-11-03
     src.child("cities1000.txt").readLines.map { line =>

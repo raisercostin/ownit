@@ -5,11 +5,11 @@ import org.junit.runner.RunWith
 import org.junit.Assert._
 import org.scalatest.junit.JUnitRunner
 import org.raisercostin.tags.raw
-import org.raisercostin.util.io.Locations
+import org.raisercostin.jedi._
+import org.raisercostin.jedi.Locations
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.tz.DateTimeZoneBuilder
-import org.raisercostin.util.io.InputLocation
 import org.raisercostin.tags.Item
 import org.raisercostin.tags.Tags
 import org.raisercostin.tags.FormatAnalyser

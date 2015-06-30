@@ -6,16 +6,14 @@ import org.junit.runner.RunWith
 import org.raisercostin.exif.ExifTags
 import org.raisercostin.tags.Formats
 import org.raisercostin.tags.Tags
-import org.raisercostin.util.io.Locations
 import org.scalatest.FunSuite
 import Renamer.AnalysedFolder
 import Renamer.Formatter
 import Renamer.standardName
 import org.scalatest.junit.JUnitRunner
-import org.raisercostin.util.io.FileLocation
-import org.raisercostin.util.io.NavigableLocation
+import org.raisercostin.jedi._
+import org.raisercostin.jedi.Locations._
 import org.raisercostin.tags.raw
-import org.raisercostin.util.io.InputLocation
 import org.joda.time.DateTime
 import org.joda.time.LocalDateTime
 
@@ -36,7 +34,7 @@ class RenamerTest extends FunSuite {
   val placeGoodFiles = current.child("good")
   //2013-10-26--18-14-15+XXXX---161-IMG_3601---at-XXX.JPG
   val file = Locations.relative("""p1\p2\p3\p4\pic.jpg""")
-  def newPath(src: InputLocation): String = {
+  def newPath(src: NavigableInputLocation): String = {
     val tags = raw.loadExifTags(src)
     newPath(src.raw, exif = tags.tags)
   }
@@ -86,18 +84,18 @@ class RenamerTest extends FunSuite {
     assertEquals(DateTime.parse("1995-10-01T00:00:00.000Z"), ExifTags.availabilityDate("0100").get)
     assertEquals(DateTime.parse("2003-09-01T00:00:00.000Z"), ExifTags.availabilityDate("0222").get)
   }
-  test("bug2 - broken exif?") {
+  test("bug2 - broken exif") {
     val src = Locations.classpath("a/a.jpg")
     val tags = raw.loadExifTags(src)
     println(tags.tags.tags.mkString("\n"))
     assertEquals("0220", tags.exifVersion.get)
     assertEquals(DateTime.parse("2002-02-01T00:00:00.000Z"), tags.exifVersionDate.get)
-    assert(tags.originalExif)
+    assertEquals(true,tags.originalExif)
     assertEquals(None, tags.validDateTime(DateTime.parse("1980-02-01T00:00:00.000Z")))
     assertEquals(DateTime.parse("2002-02-01T00:00:00.000Z"), tags.validDateTime(DateTime.parse("2002-02-01T00:00:00.000Z")).get)
     assertEquals(None, tags.validLocalDateTime(LocalDateTime.parse("1980-01-01T00:00:00.000")))
     assertEquals(LocalDateTime.parse("2002-02-01T00:00:00.000"), tags.validLocalDateTime(LocalDateTime.parse("2002-02-01T00:00:00.000")).get)
-    //if has a commonly used exif data but before exif standard like: 
+    //if has a commonly used exif data but before exif standard like:
     assertEquals(None, tags.dateTime)
     assertEquals("""good/byYearMonth/incomplete/a/108-IMG_3550--a.jpg""", newPath(src))
   }

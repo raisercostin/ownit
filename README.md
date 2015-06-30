@@ -20,13 +20,19 @@ $<tag1>|<tag2>|...|<tagN>(<microformat>)
 - http://www.thebuzzmedia.com/software/exiftool-enhanced-java-integration-for-exiftool/
 
 = Execute = 
-- create executable
-sbt oneJar
 - propose new organized folder without modifying source folder
 organize.bat d:\personal\photos2\ d:\personal\photos2-george
 - display exif info for a file
 organize.bat d:\personal\photos2-george-bad\Camera\20140906_000621.jpg
 
-- release
-1. modify version
-2. sbt oneJar
+
+## How to use ##
+ - Download from http://dl.bintray.com/raisercostin/maven/org/raisercostin/ownit
+ 
+## Development ##
+ - to release
+
+ ```
+ sbt> oneJar
+ sbt> release skip-tests
+ ```

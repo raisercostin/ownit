@@ -1,7 +1,6 @@
 package org.raisercostin.tags
 
 import org.raisercostin.tags._
-import org.raisercostin.util.io.InputLocation
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.thebuzzmedia.exiftool.adapters.ExifToolService
@@ -13,14 +12,15 @@ import org.joda.time.format.DateTimeFormatter
 import org.joda.time.format.DateTimeFormat
 import scala.util.Try
 import com.thebuzzmedia.exiftool.ExifToolNew3
-import org.raisercostin.util.io.Locations
+import org.raisercostin.jedi._
+import org.raisercostin.jedi.Locations._
 trait Item {
   def prefix: String
   def tags: Map[String, String]
   def prefixedTags = tags.map(entry => (prefix + "." + entry._1, entry._2))
   def has(tag: String): Seq[(String, String)]
 }
-case class SimpleItem(prefix: String, location: InputLocation, tags: Map[String, String]) extends Item {
+case class SimpleItem(prefix: String, location: NavigableInputLocation, tags: Map[String, String]) extends Item {
   //lazy val tags = tags2.map{case (key,value) => prefix+key -> value}
   def has(tag: String): Seq[(String, String)] = tags.filterKeys(_.contains(tag)).toSeq
 }
@@ -35,7 +35,7 @@ object ExifCodes {
 
 object raw {
   object extractor {
-    type Extractor = InputLocation => Map[String, String]
+    type Extractor = NavigableInputLocation => Map[String, String]
     val tagFileExtension = "fileExtension"
     val tagFileCreated = "fileCreated"
 
@@ -94,11 +94,11 @@ object raw {
       import scala.collection.JavaConversions._
       tool.getImageMeta(location.toFile, new ReadOptions().withNumericOutput(true)).toMap ++ corrected(location)
     }
-    def corrected(location:InputLocation):Map[String,String] = Map("FileName"->location.name,"Directory"->location.parent.path)
+    def corrected(location:NavigableInputLocation):Map[String,String] = Map("FileName"->location.name,"Directory"->location.parent.path)
     //https://github.com/drewnoakes/metadata-extractor
     //val metadataExtractor: Extractor = ???
     val sanselanExifExtractor: Extractor = location => {
-        def extractExif(loc: InputLocation) = {
+        def extractExif(loc: NavigableInputLocation) = {
 
           import org.apache.sanselan.Sanselan
           val metadata = try {
@@ -141,9 +141,9 @@ object raw {
       }
       map
     }
-    val bestExtractors: Extractor = 
-      location => 
-        analysers.transformKey(x => x /*file*/ )(fileAttributesExtractor(location)) ++ 
+    val bestExtractors: Extractor =
+      location =>
+        analysers.transformKey(x => x /*file*/ )(fileAttributesExtractor(location)) ++
     	analysers.transformKey("exif" + _)(externalExifExtractor(location)) ++
     	analysers.transformKey("path" + _)(pathExtractor(location))
   }
@@ -161,17 +161,17 @@ object raw {
   }
 
   import analysers._
-  type Itemizer = (InputLocation, Map[String, String]) => Item
-  type FullExtractor = InputLocation => Item
+  type Itemizer = (NavigableInputLocation, Map[String, String]) => Item
+  type FullExtractor = NavigableInputLocation => Item
 
   private val externalExifFullExtractor: FullExtractor = location => simpleItemizer("")(location, extractor.bestExtractors(location))
 
   private def simpleItemizer(prefix: String): Itemizer = (location, tags) => SimpleItem(prefix, location, tags)
-  private val bestExifExtractor: Boolean => InputLocation => Seq[Item] =
+  private val bestExifExtractor: Boolean => NavigableInputLocation => Seq[Item] =
     discoverPairs => location => discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2)))
 
   //when multiple maps have the same key, a suffix is added from the received source value otherwise the key is kept
-  val all: Boolean => InputLocation => Map[String, String] =
+  val all: Boolean => NavigableInputLocation => Map[String, String] =
     discoverPairs => location => {
       val maps = discoverAdditionalLocations(discoverPairs)(location).reverse.map(x => (x._1, x._2, (extractor.bestExtractors andThen allAnalyzers)(x._2)))
       val original = maps.foldLeft(Map[String, String]())((x, y) => x ++
@@ -180,10 +180,10 @@ object raw {
         transformKey(key => if (!original.contains(key)) key else keyTransformer(key, y._1))(y._3))
     }
   def keyTransformer(key: String, source: String): String = if (source.isEmpty) key else key + "#" + source
-  private def bestExifFullExtractor: Boolean => InputLocation => Item =
+  private def bestExifFullExtractor: Boolean => NavigableInputLocation => Item =
     discoverPairs => location => CompositeItem("", bestExifExtractor(discoverPairs)(location))
 
-  private def discoverAdditionalLocations(discoverPairs: Boolean): InputLocation => Seq[(String, InputLocation)] = location => {
+  private def discoverAdditionalLocations(discoverPairs: Boolean): NavigableInputLocation => Seq[(String, NavigableInputLocation)] = location => {
     val isMovie = Seq("avi", "mov").contains(location.extension.toLowerCase)
     val thm = if (discoverPairs && isMovie)
       Stream("thm2", "THM", "thm") flatMap { ext => Try{location.withExtension(_ => ext).existingOption}.toOption.flatten.map(x => (ext, x)) } headOption
@@ -197,5 +197,5 @@ object raw {
   //      CompositeItem("", raw.discoverAdditionalLocations(discoverPairs)(location).map(x => simpleItemizer(x._1)(x._2, allAnalyzers(RichExif.extractExifTags(x._2.toFile).tags))))
   //    }
   import org.raisercostin.exif.ExifTags
-  def loadExifTags(location: InputLocation): ExifTags = ExifTags(new Tags(all(true)(location)))
+  def loadExifTags(location: NavigableInputLocation): ExifTags = ExifTags(new Tags(all(true)(location)))
 }
