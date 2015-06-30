@@ -89,4 +89,9 @@ com.github.retronym.SbtOneJar.oneJarSettings
 artifact in oneJar <<= moduleName(x=>Artifact("organize"))
 mainClass in oneJar := Some("org.raisercostin.apps.Renamer")
 test in assembly := {}
+artifact in (Compile, oneJar) ~= { art =>
+	art.copy(`classifier` = Some("one-jar"))
+}
+addArtifact(artifact in (Compile, oneJar), oneJar)
+
 //net.virtualvoid.sbt.graph.Plugin.graphSettings
