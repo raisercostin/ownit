@@ -9,8 +9,8 @@ import org.raisercostin.util.gui.MessageConsole
 object RenamerGUI extends SimpleSwingApplication {
   import javax.swing.UIManager
   UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
-  def getDirectoryListing(title: String = "", default:Option[String]): Option[java.io.File] = {
-    val chooser = new FileChooser(default.map(x=>new java.io.File(x)).getOrElse(null))
+  def getDirectoryListing(title: String = "", default: Option[String]): Option[java.io.File] = {
+    val chooser = new FileChooser(default.map(x => new java.io.File(x)).getOrElse(null))
     chooser.fileSelectionMode = FileChooser.SelectionMode.DirectoriesOnly
     chooser.title = title
     val result = chooser.showOpenDialog(null)
@@ -19,9 +19,9 @@ object RenamerGUI extends SimpleSwingApplication {
       Some(chooser.selectedFile)
     } else None
   }
-  
-  var args:Array[String] = Array()
-  override def startup(args: Array[String]){
+
+  var args: Array[String] = Array()
+  override def startup(args: Array[String]) {
     this.args = args
     super.startup(args)
   }
@@ -32,7 +32,7 @@ object RenamerGUI extends SimpleSwingApplication {
       text = ""
       background = Color.white
     }
-    val scroll = new ScrollPane(textArea) 
+    val scroll = new ScrollPane(textArea)
     contents = new BorderPanel {
       layout(scroll) = Center
     }
@@ -42,7 +42,7 @@ object RenamerGUI extends SimpleSwingApplication {
     console.redirectOut()
     console.redirectErr(Color.RED, null)
 
-    val file = getDirectoryListing("titlu",args.headOption)
+    val file = getDirectoryListing("titlu", args.headOption)
     title = "organize " + file.map(_.getAbsolutePath()).getOrElse("")
     //in your swing gui event listener (e.g. button clicked, combo selected, ...)
     import scala.concurrent.future

@@ -10,11 +10,11 @@ object FormatAnalyser {
     val specialChars = " '._-"
     //this assumes that usually after $ variable a separator might come
     var result = format
-    result = result.replaceAll("""\$\{[^}]+\}["""+specialChars+"""]?""", "")
+    result = result.replaceAll("""\$\{[^}]+\}[""" + specialChars + """]?""", "")
     result = result.replaceAll("""\$[a-zA-Z0-9#|]+\([^)]+\)""", "")
     result = result.replaceAll("""\$[a-zA-Z0-9#|]+""", "")
     result = result.replaceAll(s"^[$specialChars]+", "")
-    result = result.replaceAll("["+specialChars+"]+$", "")
+    result = result.replaceAll("[" + specialChars + "]+$", "")
     result = result.replaceAll(s"""/[$specialChars]+""", "/")
     result = result.replaceAll(s"""[$specialChars]+/""", "/")
     result = result.replaceAll("/+", "/")
@@ -45,8 +45,8 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
   import org.joda.time._
   private def analyse(pattern: String, constants: Seq[String]): String = {
     import collection.JavaConverters._
-    val a:List[String] = Splitter.on("/").omitEmptyStrings().split(pattern).asScala.toList
-    a.map(x=>analyse2(x,constants)).mkString("/")
+    val a: List[String] = Splitter.on("/").omitEmptyStrings().split(pattern).asScala.toList
+    a.map(x => analyse2(x, constants)).mkString("/")
   }
   private def analyse2(pattern: String, constants: Seq[String]): String = {
     var result = pattern
@@ -59,8 +59,8 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
     result = extractTagFromString(result, "dateTimeZone", Tags(tags).getDateTimeZone("dateTimeZone").map { Formats.toSimplified })
     result = extractDateTags(result)
     result = extractTagFromString(result, "compClosestLocation")
-    result = replaceInterpolated(result, interp, dateAnalyserNoFormat+"(yyyy-MM-dd)")
-    result = replaceInterpolated(result, interp, dateAnalyserNoFormat+"(yyyy)-XX-XX)")
+    result = replaceInterpolated(result, interp, dateAnalyserNoFormat + "(yyyy-MM-dd)")
+    result = replaceInterpolated(result, interp, dateAnalyserNoFormat + "(yyyy)-XX-XX)")
     constants.zipWithIndex.map {
       case (constant, index) =>
         result = extractConstantFromString(result, constant, index)
@@ -77,22 +77,22 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
     var message = List[String]()
     var result = text
 
-      def check(date1: Try[LocalDateTime], prefix: String): DateTimeResult = {
-        if (date1.isSuccess) {
-          result = extractDateFromString(text, date1.get, prefix)
-          val mappings = countSubstring(result, prefix)
-          //actual good prefix is this
-          //            message ::= s"$prefix = $date1 matched [$result] but have only [$mappings]. 6 are needed."
-          DateTimeResult(result, mappings, Some(s"$prefix = $date1 matched [$result] with [$mappings] mappings."))
-        } else {
-          //          message ::= s"$prefix doesn't exist: " + date1.failed.get.getMessage
-          //          false
-          DateTimeResult(result, 0, Some(s"$prefix doesn't exist: " + date1.failed.get.getMessage))
-        }
+    def check(date1: Try[LocalDateTime], prefix: String): DateTimeResult = {
+      if (date1.isSuccess) {
+        result = extractDateFromString(text, date1.get, prefix)
+        val mappings = countSubstring(result, prefix)
+        //actual good prefix is this
+        //            message ::= s"$prefix = $date1 matched [$result] but have only [$mappings]. 6 are needed."
+        DateTimeResult(result, mappings, Some(s"$prefix = $date1 matched [$result] with [$mappings] mappings."))
+      } else {
+        //          message ::= s"$prefix doesn't exist: " + date1.failed.get.getMessage
+        //          false
+        DateTimeResult(result, 0, Some(s"$prefix doesn't exist: " + date1.failed.get.getMessage))
       }
-      def extractDateTime2(value: Any): Try[LocalDateTime] = Formats.extractDateTime(value).map { _.toLocalDateTime() }
-      def extractDateTime[U](format: Any => Try[U])(tag: String): Try[U] =
-        tags.get(tag).map(tag => format(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
+    }
+    def extractDateTime2(value: Any): Try[LocalDateTime] = Formats.extractDateTime(value).map { _.toLocalDateTime() }
+    def extractDateTime[U](format: Any => Try[U])(tag: String): Try[U] =
+      tags.get(tag).map(tag => format(tag)).getOrElse(Failure(new RuntimeException(s"Tag $tag doesn't exist.")))
     //exifFileModifyDate could have timezone if not modified?
     //d:\personal\work\ownit\src\test\resources>exiftool 2011-11-21--22-48-54+XXXX---XXX-IMG_XXXX---at-XXX--DSC_0547.JPG |grep Date
     //Bad
@@ -127,7 +127,7 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
       if (a.isEmpty) {
         //println(s"Couldn't find a pattern in [$value]: ${message.reverse.mkString("\n\t", "\n\t", "\n")}")
         //println(max)
-        if (max.isDefined && max.get.mappings>=2)
+        if (max.isDefined && max.get.mappings >= 2)
           result = max.get.result
         else
           result = text
@@ -151,16 +151,16 @@ case class FormatAnalyser(val tags: Map[String, String]) extends AnyVal {
     var result = text
     //var initial = result
     //do {
-      //initial = result
-      result = replaceAllLiterally(result, date.toString("yyyy"), "${" + prefix + suffix + "yyyy}")
-      result = replaceFirstLiterally2(result, date.toString("MM"), "${" + prefix + suffix + "MM}")
-      result = replaceFirstLiterally2(result, date.toString("dd"), "${" + prefix + suffix + "dd}")
-      result = replaceFirstLiterally2(result, date.toString("HH"), "${" + prefix + suffix + "HH}")
-      result = replaceFirstLiterally2(result, date.toString("mm"), "${" + prefix + suffix + "mm}")
-      result = replaceFirstLiterally2(result, date.toString("ss"), "${" + prefix + suffix + "ss}")
-      if (date.toString("Z").nonEmpty) {
-        result = replaceFirstLiterally2(result, date.toString("Z"), "${" + prefix + suffix + "Z}")
-      }
+    //initial = result
+    result = replaceAllLiterally(result, date.toString("yyyy"), "${" + prefix + suffix + "yyyy}")
+    result = replaceFirstLiterally2(result, date.toString("MM"), "${" + prefix + suffix + "MM}")
+    result = replaceFirstLiterally2(result, date.toString("dd"), "${" + prefix + suffix + "dd}")
+    result = replaceFirstLiterally2(result, date.toString("HH"), "${" + prefix + suffix + "HH}")
+    result = replaceFirstLiterally2(result, date.toString("mm"), "${" + prefix + suffix + "mm}")
+    result = replaceFirstLiterally2(result, date.toString("ss"), "${" + prefix + suffix + "ss}")
+    if (date.toString("Z").nonEmpty) {
+      result = replaceFirstLiterally2(result, date.toString("Z"), "${" + prefix + suffix + "Z}")
+    }
     //} while (result != initial)
     result = replaceAllLiterally(result, "${" + prefix, "${" + prefix2)
     result

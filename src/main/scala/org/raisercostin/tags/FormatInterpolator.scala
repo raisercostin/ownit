@@ -64,7 +64,7 @@ object FormatInterpolator {
   //    val pattern1 = s"$groupOfVariables$groupOfFormatters[|]?"
   //println(pattern1)
   val letter = """[a-zA-Z0-9]"""
-  val variable = """(?:\$"""+letter+s"""(?:$letter|[#])*)"""
+  val variable = """(?:\$""" + letter + s"""(?:$letter|[#])*)"""
   val constant = s"""(?:$letter*)"""
   val variables = s"""$variable(?:[|]$variable)*"""
   val selector = s"""(?:$variables)""" //s"""($variables(?:[|]$constant)?)"""
@@ -89,10 +89,10 @@ object FormatInterpolator {
   //    println(s"fullSelector=$fullSelector")
   //    println(s"fullSection=$fullSection")
 }
-case class FormatInterpolator(val tags: Map[String, String], formatter:Formatter = Formats) {
+case class FormatInterpolator(val tags: Map[String, String], formatter: Formatter = Formats) {
   import FormatInterpolator._
   def apply(pattern: String): Try[String] = Try {
-	  //println(s"interpolate pattern=[$pattern]")
+    //println(s"interpolate pattern=[$pattern]")
     import scala.util.matching.Regex
     //Assert.assertEquals(patternAll,patternAll2)
     var result = pattern
@@ -129,7 +129,7 @@ case class FormatInterpolator(val tags: Map[String, String], formatter:Formatter
     var cashed = Seq[Try[String]]()
     val firstGood = values.filter { x => if (x.isFailure) cashed = cashed :+ x; x.isSuccess }
     if (firstGood.isEmpty)
-      throw new RuntimeException(s"Can't interpolate format [$all]: $cashed",cashed.head.failed.get)
+      throw new RuntimeException(s"Can't interpolate format [$all]: $cashed", cashed.head.failed.get)
     firstGood.head
   }
   private def expandMultiple(selector: String, convertor: Option[String]): Try[String] = {
@@ -138,10 +138,10 @@ case class FormatInterpolator(val tags: Map[String, String], formatter:Formatter
     val all: Iterable[String] = if (selector.isEmpty()) Seq("") else Splitter.on('|').split(selector)
     val convertors: List[String] = Splitter.on('|').trimResults().split(convertor.getOrElse("")).toList
     //println(s"expand[$all] with convertors[$convertors]")
-    val results = all.toStream.flatMap(extractValue).map{value=>
+    val results = all.toStream.flatMap(extractValue).map { value =>
       //case None => Failure(new RuntimeException(s"Couldn't find any value using [$selector]"))
       //case Some(value) =>
-        formatter.convert(value, convertors.headOption, convertors.drop(1).headOption)
+      formatter.convert(value, convertors.headOption, convertors.drop(1).headOption)
     }
     results.filter(_.isSuccess).headOption.orElse(results.headOption).getOrElse(Failure(new RuntimeException(s"Couldn't find any value for $selector using formatter=$convertor")))
     //???

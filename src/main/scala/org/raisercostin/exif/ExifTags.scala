@@ -90,9 +90,9 @@ case class ExifTags(rootInitialTags: Tags) {
       GPSLatitude = gpsLatitude.get,
       //GPSLatitudeRef = tags.getString("exifGPSLatitudeRef").getOrElse("N"),
       GPSLongitude = gpsLongitude.get //GPSLongitudeRef = tags.getString("exifGPSLongitudeRef").get,
-      //GPSAltitude = tags.getString("exifGPSAltitude").getOrElse("0"),
-      //GPSAltitudeRef = tags.getString("exifGPSAltitudeRef").getOrElse("0"))
-      )
+    //GPSAltitude = tags.getString("exifGPSAltitude").getOrElse("0"),
+    //GPSAltitudeRef = tags.getString("exifGPSAltitudeRef").getOrElse("0"))
+    )
   }
   val compClosestLocation: Option[String] = gps().flatMap { _.closestLocation.name }
   private val compFileNumberMajor: Try[String] = Try { fileNumber.get }.map(exifFileNumber => "%d".format(exifFileNumber / 10000))

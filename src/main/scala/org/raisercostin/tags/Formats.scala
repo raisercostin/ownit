@@ -162,7 +162,7 @@ case class Formats(val validator: Option[Validator]) extends Formatter {
     val result = value match {
       case text: String =>
         val formatters = Seq(localDateTimeInternalExifFormatter, localDateTimeFormatterISO, Named("yyyy-MM-dd HH:mm:ss", patternWithoutOffsetParsed))
-          def parse(format: Named[DateTimeFormatter]) = Try { LocalDateTime.parse(text.trim, format) }
+        def parse(format: Named[DateTimeFormatter]) = Try { LocalDateTime.parse(text.trim, format) }
         parseInOrder("LocalDateTime", formatters, parse, text.trim)
       case date: Date =>
         Try { new LocalDateTime(date) }
@@ -181,7 +181,7 @@ case class Formats(val validator: Option[Validator]) extends Formatter {
     val result = value match {
       case text: String =>
         val formatters = Seq(dateTime4, Named("yyyy-MM-dd HH:mm:ssZ", patternWithOffsetParsed), dateTimeIsoFormatter, dateTimeInternalExifFormatter2, dateTimeInternalExifFormatter, exifDateTimeFormatter3)
-          def parseDateTime(format: Named[DateTimeFormatter]) = Try { DateTime.parse(text.trim, format) }
+        def parseDateTime(format: Named[DateTimeFormatter]) = Try { DateTime.parse(text.trim, format) }
         parseInOrder("DateTime", formatters, parseDateTime, text.trim)
       case date: Date =>
         Try { new DateTime(date) }

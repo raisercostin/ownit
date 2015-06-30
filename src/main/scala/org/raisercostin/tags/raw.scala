@@ -55,13 +55,15 @@ object raw {
     val pathExtractor: Extractor = location => {
       val path = location.name
       val formats = """([12]\d{3})[._\- ]*([01]\d)[._\- ]*([0-3]\d)[._\- ]*([0-6]\d)[._\- ]*([0-6]\d)[._\- ]*([0-6]\d)""".r.unanchored
-      val localDateTime = Try{path match {
-        case formats(year, month, day, hour, minute, second) =>
-          implicit def a2i(a: String) = a.toInt
-          Some(new LocalDateTime(year, month, day, hour, minute, second))
-        case _ => None
-      }}
-      val a= for{x <- localDateTime.toOption;y<-x} yield Map("LocalDateTime"->y.toString(Formats.localDateTimeInternalExifFormatter))
+      val localDateTime = Try {
+        path match {
+          case formats(year, month, day, hour, minute, second) =>
+            implicit def a2i(a: String) = a.toInt
+            Some(new LocalDateTime(year, month, day, hour, minute, second))
+          case _ => None
+        }
+      }
+      val a = for { x <- localDateTime.toOption; y <- x } yield Map("LocalDateTime" -> y.toString(Formats.localDateTimeInternalExifFormatter))
       a.getOrElse(Map())
     }
 
@@ -94,20 +96,20 @@ object raw {
       import scala.collection.JavaConversions._
       tool.getImageMeta(location.toFile, new ReadOptions().withNumericOutput(true)).toMap ++ corrected(location)
     }
-    def corrected(location:NavigableInputLocation):Map[String,String] = Map("FileName"->location.name,"Directory"->location.parent.path)
+    def corrected(location: NavigableInputLocation): Map[String, String] = Map("FileName" -> location.name, "Directory" -> location.parent.path)
     //https://github.com/drewnoakes/metadata-extractor
     //val metadataExtractor: Extractor = ???
     val sanselanExifExtractor: Extractor = location => {
-        def extractExif(loc: NavigableInputLocation) = {
+      def extractExif(loc: NavigableInputLocation) = {
 
-          import org.apache.sanselan.Sanselan
-          val metadata = try {
-            Sanselan.getMetadata(loc.toFile)
-          } catch {
-            case e: Throwable => throw new RuntimeException("Can't parse exif for " + loc, e)
-          }
-          metadata
+        import org.apache.sanselan.Sanselan
+        val metadata = try {
+          Sanselan.getMetadata(loc.toFile)
+        } catch {
+          case e: Throwable => throw new RuntimeException("Can't parse exif for " + loc, e)
         }
+        metadata
+      }
       val metadata = extractExif(location)
 
       import scala.collection.JavaConversions._
@@ -144,8 +146,8 @@ object raw {
     val bestExtractors: Extractor =
       location =>
         analysers.transformKey(x => x /*file*/ )(fileAttributesExtractor(location)) ++
-    	analysers.transformKey("exif" + _)(externalExifExtractor(location)) ++
-    	analysers.transformKey("path" + _)(pathExtractor(location))
+          analysers.transformKey("exif" + _)(externalExifExtractor(location)) ++
+          analysers.transformKey("path" + _)(pathExtractor(location))
   }
 
   object analysers {
@@ -186,7 +188,7 @@ object raw {
   private def discoverAdditionalLocations(discoverPairs: Boolean): NavigableInputLocation => Seq[(String, NavigableInputLocation)] = location => {
     val isMovie = Seq("avi", "mov").contains(location.extension.toLowerCase)
     val thm = if (discoverPairs && isMovie)
-      Stream("thm2", "THM", "thm") flatMap { ext => Try{location.withExtension(_ => ext).existingOption}.toOption.flatten.map(x => (ext, x)) } headOption
+      Stream("thm2", "THM", "thm") flatMap { ext => Try { location.withExtension(_ => ext).existingOption }.toOption.flatten.map(x => (ext, x)) } headOption
     else
       None
     val locations = thm ++: Seq(("", location))
