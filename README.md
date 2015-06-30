@@ -32,7 +32,7 @@ organize.bat d:\personal\photos2-george-bad\Camera\20140906_000621.jpg
 
 
 ## How to use ##
- - Download from http://dl.bintray.com/raisercostin/maven/org/raisercostin/ownit
+ - Download one-jar files from http://dl.bintray.com/raisercostin/maven/org/raisercostin/ownit_2.10/0.8/ownit_2.10-0.8-one-jar.jar
  
 ## Development ##
  - to release
