@@ -271,7 +271,7 @@ fileCreated#THM
 fileExtension
 fileExtension#THM
 fileModification
-fileModification#THM""".replaceAll("\\s+","\n"), all.map(_._1).mkString("\n"))
+fileModification#THM""".replaceAll("\\s+", "\n"), all.map(_._1).mkString("\n"))
     //val tags2 = raw2.BestExifExtractor.extract(Locations.classpath("MVI_2366.MOV")).get.tags.toSeq.sortBy(_._1)
     //println(tags.mkString("\n"))
     //    assertEquals(214, tags2.size)
@@ -342,8 +342,8 @@ fileModification#THM""".replaceAll("\\s+","\n"), all.map(_._1).mkString("\n"))
     val fileNumber = tags.fileNumber.get
     val delta = 10
     val range = numberMinor - delta to numberMinor + delta
-      //search for a jpg that has a counter slightly before the current exifFileNumber
-      def nameMightContainNumberInRange(range: Range)(name: String) = range.find(x => name contains x.toString).isDefined
+    //search for a jpg that has a counter slightly before the current exifFileNumber
+    def nameMightContainNumberInRange(range: Range)(name: String) = range.find(x => name contains x.toString).isDefined
 
     val files = src.asFile.parent.list.filter(_.extension.toLowerCase == "jpg").toList
     //(1 to delta).find(x )

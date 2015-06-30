@@ -174,7 +174,7 @@ class ExifTagsTest extends FunSuite {
     val tags: ExifTags = raw.loadExifTags(Locations.classpath("""sample3-2014-07-22--17-04-25------20140722_140433_sample3.mp4"""))
     println(tags.tags.tags.mkString("\n"))
     assertEquals("2014-07-22T17:04:32.000Z", tags.dateTimeUTC.get.toString())
-    assertEquals("known bug","2014-07-22T14:04:33", tags.getLocalDateTime("pathLocalDateTime").get.toString())
+    assertEquals("known bug", "2014-07-22T14:04:33", tags.getLocalDateTime("pathLocalDateTime").get.toString())
     assertEquals("2013-12-30T17:36:03", tags.localDateTime.get.toString)
     assertEquals("+02:00", tags.dateTimeZone.get.toString)
     assertEquals("2013-12-30T17:36:03.000+02:00", tags.dateTime.get.toString())

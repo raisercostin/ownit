@@ -90,7 +90,7 @@ class RenamerTest extends FunSuite {
     println(tags.tags.tags.mkString("\n"))
     assertEquals("0220", tags.exifVersion.get)
     assertEquals(DateTime.parse("2002-02-01T00:00:00.000Z"), tags.exifVersionDate.get)
-    assertEquals(true,tags.originalExif)
+    assertEquals(true, tags.originalExif)
     assertEquals(None, tags.validDateTime(DateTime.parse("1980-02-01T00:00:00.000Z")))
     assertEquals(DateTime.parse("2002-02-01T00:00:00.000Z"), tags.validDateTime(DateTime.parse("2002-02-01T00:00:00.000Z")).get)
     assertEquals(None, tags.validLocalDateTime(LocalDateTime.parse("1980-01-01T00:00:00.000")))

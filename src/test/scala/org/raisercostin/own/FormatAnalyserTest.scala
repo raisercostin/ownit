@@ -48,10 +48,10 @@ class FormatAnalyserTest extends FunSuite with BeforeAndAfterAll with TryValues 
   }
   test("exclude tags from analisys") {
     val tags = Tags(tags2)
-    assertEquals("aaaa${exifFileNumberMajor}${exifFileNumberMinor}bbb", tags.analyse("aaaa4372366bbb",Seq()).get)
-    assertEquals("aaaa437${exifFileNumberMinor}bbb", tags.analyse("aaaa4372366bbb",Seq("exifFileNumberMajor")).get)
-    assertEquals("aaaa${exifFileNumberMajor}2366bbb", tags.analyse("aaaa4372366bbb",Seq("exifFileNumberMinor")).get)
-    assertEquals("aaaa4372366bbb", tags.analyse("aaaa4372366bbb",Seq("exifFileNumberMinor","exifFileNumberMajor")).get)
+    assertEquals("aaaa${exifFileNumberMajor}${exifFileNumberMinor}bbb", tags.analyse("aaaa4372366bbb", Seq()).get)
+    assertEquals("aaaa437${exifFileNumberMinor}bbb", tags.analyse("aaaa4372366bbb", Seq("exifFileNumberMajor")).get)
+    assertEquals("aaaa${exifFileNumberMajor}2366bbb", tags.analyse("aaaa4372366bbb", Seq("exifFileNumberMinor")).get)
+    assertEquals("aaaa4372366bbb", tags.analyse("aaaa4372366bbb", Seq("exifFileNumberMinor", "exifFileNumberMajor")).get)
   }
 }
 
