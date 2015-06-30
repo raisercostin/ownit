@@ -83,7 +83,9 @@ releaseNextVersion := { ver => sbtrelease.Version(ver).map(_.bumpMinor.string).g
 //autoexecutable
 mainClass := Some("org.raisercostin.apps.Renamer")
 com.github.retronym.SbtOneJar.oneJarSettings
-artifact in oneJar <<= moduleName(x=>Artifact("organize"))
+//commented to be able to upload to bintray with the standard name
+//[error] (*:publish) error uploading to https://api.bintray.com/maven/raisercostin/maven/maven/org/raisercostin/ownit_2.10/0.7/organize_2.10-0.7-onejar.jar: {"message":"Provided artifact path does not comply with Maven's convention"}
+//artifact in oneJar <<= moduleName(x=>Artifact("organize"))
 mainClass in oneJar := Some("org.raisercostin.apps.Renamer")
 test in assembly := {}
 artifact in (Compile, oneJar) ~= { art =>
