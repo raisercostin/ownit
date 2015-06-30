@@ -39,6 +39,7 @@ licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"
 resolvers += "raisercostin resolver" at "http://dl.bintray.com/raisercostin/maven"
 resolvers += "thenewmotion" at "http://nexus.thenewmotion.com/content/repositories/releases-public"
 resolvers += "The Buzz Media Maven Repository" at "http://maven.thebuzzmedia.com"
+resolvers += "raisercostin-deprecated" at "https://raisercostin.googlecode.com/svn/maven2"
 
 pomExtra := (
   <scm>
