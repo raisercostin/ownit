@@ -101,7 +101,7 @@ object Renamer {
     val oldValue = Option(java.lang.System.getProperty(ExifToolNew3.ENV_EXIF_TOOL_PATH)).filter(_.nonEmpty)
     if (!oldValue.isDefined) {
       val srcExifTool = Locations.classpath("exiftool2.exe")
-      val exifTool = Locations.temp.child("exiftool/exiftool2.exe").asFile.nonExisting(_.copyFrom(srcExifTool)).absolute
+      val exifTool = Locations.temp.child("exiftool/exiftool2.exe").asFile.mkdirOnParentIfNecessary.nonExisting(_.copyFrom(srcExifTool)).absolute
       java.lang.System.setProperty(ExifToolNew3.ENV_EXIF_TOOL_PATH, exifTool)
       println(s"Use exiftool from $exifTool copied from $srcExifTool. Environment variable [${ExifToolNew3.ENV_EXIF_TOOL_PATH}] is not defined.")
     } else {
