@@ -6,12 +6,13 @@ name := "ownit"
 description := "Content Organizer Assistant – automatic heuristic metadata extractor of Exif(images), ID3 tag(mp3)"
 homepage := Some(url(s"https://github.com/raisercostin/"+name.value))
 
-scalaVersion := "2.10.5"
+//scalaVersion := "2.10.5"
+scalaVersion := "2.11.2"
 //crossScalaVersions := Seq(scalaVersion.value, "2.11.4")
 scalacOptions ++= Seq(Opts.compile.deprecation, "-feature")
 
 libraryDependencies ++= Seq(
-	"org.raisercostin" %% "jedi-io" % "0.18"
+	"org.raisercostin" %% "jedi-io" % "0.22"
 	,"commons-io" % "commons-io" % "2.4"
 	,"org.slf4j" % "slf4j-api" % "1.7.5"
 	,"org.slf4j" % "slf4j-simple" % "1.7.5"
@@ -20,16 +21,16 @@ libraryDependencies ++= Seq(
 	,"dom4j" % "dom4j" % "1.6.1"
 	,"jaxen" % "jaxen" % "1.1.6"
 	,"org.apache.sanselan" % "sanselan" % "0.97-incubator"
-	,"com.thenewmotion" % "time_2.10" % "2.4"
+	,"com.thenewmotion" %% "time" % "2.8"
 	//,"com.thebuzzmedia" % "exiftool-lib" % "1.1"
 	,"com.thebuzzmedia.exiftool" % "exiftool-lib" % "2.3.9" exclude("org.slf4j","slf4j-log4j12")
 	//for guava
 	,"com.google.code.findbugs" % "jsr305" % "2.0.3"
 	//,"org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.3"
 	//,"com.netflix.rxjava" % "rxjava-scala" % "0.15.0"
-	,"org.scala-lang" % "scala-swing" % scalaVersion.value
+	,"org.scala-lang.modules" %% "scala-swing" % "2.0.0-M2"//scalaVersion.value
 	//,"org.scalacheck" %% "scalacheck" % "1.12.2" % "test"
-	,"org.scalatest" %% "scalatest" % "2.0" % "test"
+	,"org.scalatest" %% "scalatest" % "2.2.4" % "test"
 	,"junit" % "junit" % "4.10" % "test"
 )
 
@@ -37,6 +38,7 @@ libraryDependencies ++= Seq(
 // (using a canonical name).
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"))
 resolvers += "raisercostin resolver" at "http://dl.bintray.com/raisercostin/maven"
+resolvers += Resolver.url("raisercostin ivy resolver", url("http://dl.bintray.com/raisercostin/maven"))(Resolver.ivyStylePatterns)
 resolvers += "thenewmotion" at "http://nexus.thenewmotion.com/content/repositories/releases-public"
 resolvers += "The Buzz Media Maven Repository" at "http://maven.thebuzzmedia.com"
 resolvers += "raisercostin-deprecated" at "https://raisercostin.googlecode.com/svn/maven2"

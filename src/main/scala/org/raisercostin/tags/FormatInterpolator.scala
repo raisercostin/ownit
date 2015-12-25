@@ -2,7 +2,6 @@ package org.raisercostin.tags
 
 import scala.util.{ Try, Failure }
 import scala.util.Success
-import org.junit.Assert
 //import scala.util.parsing.combinator.RegexParsers
 import scala.util.Failure
 import scala.util.Success
