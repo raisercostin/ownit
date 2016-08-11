@@ -178,7 +178,7 @@ object Renamer {
     println("analyze " + src.absolute + " ...")
     val newName = Try {
       val tags = raw.loadExifTags(src)
-      val maxDateTime = new DateTime(2016, 8, 1, 0, 0, 0)
+      val maxDateTime = new DateTime(2017, 8, 1, 0, 0, 0)
       if (tags.localDateTime.map { _.toDateTime().isAfter(maxDateTime) }.getOrElse(false)) {
         throw new RuntimeException(s"The application cannot process files newer than ${maxDateTime.toString("yyyy-MM-dd")}. The file had localDateTime ${tags.localDateTime}. You should update the application.")
       }
